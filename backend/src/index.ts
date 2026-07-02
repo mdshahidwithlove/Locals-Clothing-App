@@ -70,7 +70,7 @@ app.use("/api/v1/admin", adminRoute);
 app.use("/api/v1/user/verification", verificationRoute);
 app.use("/api/v1/returns", returnRoute);
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 
 async function startServer() {
   try {
