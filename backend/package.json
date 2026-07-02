@@ -5,16 +5,9 @@
   "scripts": {
     "dev": "bun run --watch src/index.ts",
     "dev:node": "npx tsx watch src/index.ts",
-    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc",
+    "build": "tsc",
     "start": "node dist/index.js",
-    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
-  },
-  "devDependencies": {
-    "@types/bun": "latest",
-    "@types/node": "^25.5.0"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
+    "clean": "tsc --clean"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1007.0",
@@ -23,6 +16,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^25.5.0",
     "axios": "^1.13.6",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
@@ -32,6 +26,7 @@
     "mongoose": "^9.3.0",
     "razorpay": "^2.9.6",
     "@supabase/supabase-js": "^2.49.1",
+    "typescript": "^5.0.0",
     "uuid": "^13.0.0",
     "zod": "^4.3.6"
   }
