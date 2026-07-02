@@ -1,3 +1,5 @@
+import { getConfig } from "../services/configService";
+
 /**
  * Location utilities for extracting coordinates from map links and geocoding addresses
  */
@@ -72,7 +74,7 @@ export async function geocodeAddress(address: string): Promise<{ lat: number; ln
     return null;
   }
 
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  const apiKey = getConfig("GOOGLE_MAPS_API_KEY");
   
   if (!apiKey) {
     console.warn('Google Maps API key not configured. Geocoding disabled.');

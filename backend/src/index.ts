@@ -23,24 +23,10 @@ import { initializeRazorpay } from "./controllers/paymentController";
 import { requestTimeout } from "./middleware/timeout";
 import { startAssignmentScheduler, stopAssignmentScheduler } from "./services/assignmentScheduler";
 import { sanitizeInput } from "./middleware/sanitize";
+import { loadConfigCache, getConfig } from "./services/configService";
 
 dotenv.config();
 const app = express();
-
-connectDatabase();
-
-// Start automatic order assignment service (runs every 60 seconds)
-startAssignmentScheduler();
-
-// Initialize Razorpay (support multiple env var names)
-const razorpayKeyId = process.env.RAZORPAY_KEY_ID || process.env.RAZORPAY_KEYID;
-const razorpayKeySecret = process.env.RAZORPAY_KEY_SECRET || process.env.RAZORPAY_API_SECRET;
-
-if (razorpayKeyId && razorpayKeySecret) {
-  initializeRazorpay(razorpayKeyId, razorpayKeySecret);
-} else {
-  console.warn("Razorpay credentials not found. Payment functionality will not work.");
-}
 
 app.use(
   cors({
@@ -85,9 +71,41 @@ app.use("/api/v1/user/verification", verificationRoute);
 app.use("/api/v1/returns", returnRoute);
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+
+async function startServer() {
+  try {
+    // 1. Connect to MongoDB database
+    await connectDatabase();
+    console.log("Database connected successfully");
+
+    // 2. Load settings from database into configuration cache
+    await loadConfigCache();
+
+    // 3. Start automatic order assignment service (runs every 60 seconds)
+    startAssignmentScheduler();
+
+    // 4. Initialize Razorpay (using config cache or environment variable)
+    const razorpayKeyId = getConfig("RAZORPAY_KEY_ID") || getConfig("RAZORPAY_KEYID");
+    const razorpayKeySecret = getConfig("RAZORPAY_KEY_SECRET") || getConfig("RAZORPAY_API_SECRET");
+
+    if (razorpayKeyId && razorpayKeySecret) {
+      initializeRazorpay(razorpayKeyId, razorpayKeySecret);
+      console.log("Razorpay initialized successfully");
+    } else {
+      console.warn("Razorpay credentials not found. Payment functionality will not work.");
+    }
+
+    // 5. Start listening
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error("Failed to start server:", error);
+    process.exit(1);
+  }
+}
+
+startServer();
 
 // Graceful shutdown
 process.on('SIGTERM', () => {

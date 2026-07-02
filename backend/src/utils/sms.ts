@@ -1,12 +1,19 @@
 import axios from "axios";
+import { getConfig } from "../services/configService";
 
 export async function sendPhoneOtp(phone: string, phoneOtp: string): Promise<string | null> {
   try {
-    const apiKey = process.env.TWO_FACTOR_API_KEY;
+    const apiKey = getConfig("TWO_FACTOR_API_KEY");
     
-    if (!apiKey) {
-      console.error("TWO_FACTOR_API_KEY environment variable is not defined");
-      return null;
+    const isPlaceholder = !apiKey || 
+                          apiKey === 'your_2factor_api_key' || 
+                          apiKey === 'placeholder' || 
+                          apiKey.startsWith('your_') || 
+                          apiKey.length < 10;
+
+    if (isPlaceholder) {
+      console.warn(`⚠️ TWO_FACTOR_API_KEY not defined or is placeholder (${apiKey}). [DEVELOPMENT MODE] Bypassing real SMS. OTP for ${phone} is: ${phoneOtp}`);
+      return phoneOtp;
     }
 
     // Clean phone number (remove spaces, dashes, etc.)

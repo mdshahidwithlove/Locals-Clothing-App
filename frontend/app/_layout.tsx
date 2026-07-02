@@ -10,6 +10,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { CartProvider } from '@/contexts/CartContext';
 import { LocationProvider } from '@/contexts/LocationContext';
 import { OnlineStatusProvider } from '@/contexts/OnlineStatusContext';
+import { NotificationProvider } from '@/components/NotificationProvider';
 
 SplashScreen.preventAutoHideAsync().catch(() => {
   // Splash may already be hidden on fast reload.
@@ -46,32 +47,34 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <LocationProvider>
-        <OnlineStatusProvider>
-          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-            <CartProvider>
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              animation: 'slide_from_right',
-              animationDuration: 200,
-            }}
-          >
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="auth" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="(merchantTabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="(deliveryTabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="merchant" options={{ headerShown: false }} />
-            <Stack.Screen name="store" options={{ headerShown: false }} />
-            <Stack.Screen name="product" options={{ headerShown: false }} />
-            <Stack.Screen name="order" options={{ headerShown: false }} />
-          </Stack>
-            <StatusBar style="auto" />
-            </CartProvider>
-          </ThemeProvider>
-        </OnlineStatusProvider>
-      </LocationProvider>
+      <NotificationProvider>
+        <LocationProvider>
+          <OnlineStatusProvider>
+            <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+              <CartProvider>
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                animation: 'slide_from_right',
+                animationDuration: 200,
+              }}
+            >
+              <Stack.Screen name="index" options={{ headerShown: false }} />
+              <Stack.Screen name="auth" options={{ headerShown: false }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="(merchantTabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="(deliveryTabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="merchant" options={{ headerShown: false }} />
+              <Stack.Screen name="store" options={{ headerShown: false }} />
+              <Stack.Screen name="product" options={{ headerShown: false }} />
+              <Stack.Screen name="order" options={{ headerShown: false }} />
+            </Stack>
+              <StatusBar style="auto" />
+              </CartProvider>
+            </ThemeProvider>
+          </OnlineStatusProvider>
+        </LocationProvider>
+      </NotificationProvider>
     </AuthProvider>
   );
 }

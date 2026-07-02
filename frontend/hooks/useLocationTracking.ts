@@ -128,7 +128,7 @@ export const useLocationTracking = (options: UseLocationTrackingOptions = { enab
         if (latestLocation) {
           sendLocationUpdate(latestLocation);
         }
-      }, updateInterval);
+      }, updateInterval) as any;
 
       console.log('✅ Location tracking started');
     } catch (err: any) {
@@ -163,9 +163,15 @@ export const useLocationTracking = (options: UseLocationTrackingOptions = { enab
         return null;
       }
 
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-      });
+      // Try to get last known location first (extremely fast)
+      let location = await Location.getLastKnownPositionAsync();
+
+      if (!location) {
+        // Fallback to getCurrentPositionAsync with a lower accuracy (balanced) to speed it up
+        location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+      }
 
       const coords: LocationCoords = {
         lat: location.coords.latitude,

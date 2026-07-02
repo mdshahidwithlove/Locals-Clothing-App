@@ -171,7 +171,7 @@ export async function getStoreReviews(req: Request, res: Response) {
 
     const filter = {
       store: storeId,
-      status: "Delivered",
+      status: "Delivered" as const,
       storeRated: true,
     };
 
@@ -224,8 +224,8 @@ export async function getPendingStoreReviews(req: Request, res: Response) {
 
     const filter = {
       user: user._id,
-      status: "Delivered",
-      storeRated: { $ne: true },
+      status: "Delivered" as const,
+      storeRated: { $ne: true } as const,
     };
 
     const [orders, totalPending] = await Promise.all([

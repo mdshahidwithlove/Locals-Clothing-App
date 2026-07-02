@@ -131,3 +131,14 @@ export async function updateStoreStatus(storeId: string, isActive: boolean) {
   const res = await api.patch(`/api/v1/admin/stores/${storeId}/status`, { isActive });
   return res.data.data;
 }
+
+// ─── Settings ───────────────────────────────────────────────────────────────
+export async function fetchSettings() {
+  const res = await api.get('/api/v1/admin/settings');
+  return res.data;
+}
+
+export async function updateSettings(settings: { key: string; value: string }[]) {
+  const res = await api.patch('/api/v1/admin/settings', { settings });
+  return res.data;
+}

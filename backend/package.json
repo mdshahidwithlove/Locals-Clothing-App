@@ -31,6 +31,7 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.3.0",
     "razorpay": "^2.9.6",
+    "@supabase/supabase-js": "^2.49.1",
     "uuid": "^13.0.0",
     "zod": "^4.3.6"
   }

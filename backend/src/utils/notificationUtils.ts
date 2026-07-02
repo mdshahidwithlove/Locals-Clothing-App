@@ -1,5 +1,7 @@
 import NotificationModel from "../Models/notificationModel";
+import UserModel from "../Models/userModel";
 import type { Types } from "mongoose";
+import axios from "axios";
 
 export interface NotificationData {
   recipient: Types.ObjectId | string;
@@ -16,6 +18,42 @@ export interface NotificationData {
 }
 
 /**
+ * Send push notification using Expo Push API
+ */
+async function sendExpoPushNotification(pushToken: string, title: string, body: string, data?: any): Promise<void> {
+  if (!pushToken || !pushToken.startsWith("ExponentPushToken[")) {
+    console.warn(`[PushNotification] Invalid Expo push token skipped: ${pushToken}`);
+    return;
+  }
+
+  try {
+    const payload = {
+      to: pushToken,
+      sound: "default",
+      title,
+      body,
+      data: data || {},
+    };
+
+    const response = await axios.post("https://exp.host/--/api/v2/push/send", payload, {
+      headers: {
+        Accept: "application/json",
+        "Accept-encoding": "gzip, deflate",
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (response.status === 200) {
+      console.log(`[PushNotification] Expo push successfully sent to ${pushToken}`);
+    } else {
+      console.error(`[PushNotification] Expo push API returned status ${response.status}:`, response.data);
+    }
+  } catch (error) {
+    console.error("[PushNotification] Error sending Expo push notification:", error);
+  }
+}
+
+/**
  * Send notification to a user
  */
 export async function sendNotification(notificationData: NotificationData): Promise<void> {
@@ -23,8 +61,23 @@ export async function sendNotification(notificationData: NotificationData): Prom
     const notification = new NotificationModel(notificationData);
     await notification.save();
     
-    // TODO: Send push notification via FCM/APNS
-    // TODO: Send SMS/Email if enabled
+    // Find recipient's push token from database
+    const user = await UserModel.findById(notificationData.recipient).select("pushToken");
+    if (user && user.pushToken) {
+      // Trigger real-time push notification via Expo
+      await sendExpoPushNotification(
+        user.pushToken,
+        notificationData.title,
+        notificationData.message,
+        {
+          type: notificationData.type,
+          orderId: notificationData.order ? notificationData.order.toString() : undefined,
+          ...notificationData.data
+        }
+      );
+    } else {
+      console.log(`[Notification] No active push token found for recipient ${notificationData.recipient}. Skipping push.`);
+    }
     
     console.log(`Notification sent to ${notificationData.recipient}: ${notificationData.title}`);
   } catch (error) {

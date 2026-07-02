@@ -110,6 +110,10 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Order",
   },
+  pushToken: {
+    type: String,
+    default: null,
+  },
 }, {
   timestamps: true,
 });

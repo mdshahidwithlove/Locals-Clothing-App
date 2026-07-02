@@ -357,7 +357,7 @@ export default function CartScreen() {
         theme: { color: Colors.primary }
       };
 
-      RazorpayCheckout.open(options)
+      RazorpayCheckout.open(options as any)
         .then(async (data: any) => {
           // Payment successful - verify it
           try {

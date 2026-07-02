@@ -1,5 +1,5 @@
 import express from 'express';
-import { onboarding, verifyOtp, getProfile, registerUser, loginUser, completeProfile, updateProfile, getUserStats, deleteAccount } from '../controllers/usercontroller';
+import { onboarding, verifyOtp, getProfile, registerUser, loginUser, completeProfile, updateProfile, getUserStats, deleteAccount, savePushToken } from '../controllers/usercontroller';
 import { isAuthenticated } from '../middleware/auth';
 
 const userRoute = express.Router();
@@ -22,5 +22,7 @@ userRoute.get('/stats', isAuthenticated, getUserStats);
 userRoute.post('/complete-profile', isAuthenticated, completeProfile);
 // Permanently delete authenticated user account and all related data
 userRoute.delete('/account', isAuthenticated, deleteAccount);
+// Register/Update push notifications token
+userRoute.post('/push-token', isAuthenticated, savePushToken);
 
 export default userRoute;

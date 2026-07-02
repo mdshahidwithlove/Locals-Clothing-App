@@ -197,7 +197,7 @@ const Auth = () => {
 
       <KeyboardAvoidingView
         style={styles.keyboardContainer}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       >
         <View style={styles.content}>
@@ -227,7 +227,12 @@ const Auth = () => {
             )}
 
             {/* Scrollable Content Section */}
-            <View style={styles.scrollableContent}>
+            <ScrollView 
+              style={styles.scrollableContent}
+              contentContainerStyle={styles.scrollableContentContainer}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
               {!showEmailMode ? (
                 <>
                   {/* Phone Input Section */}
@@ -252,12 +257,7 @@ const Auth = () => {
                   <TermsSection />
                 </>
               ) : (
-                <ScrollView 
-                  style={styles.emailScrollView}
-                  contentContainerStyle={styles.emailScrollContent}
-                  showsVerticalScrollIndicator={false}
-                  keyboardShouldPersistTaps="handled"
-                >
+                <>
                   {/* Email Input */}
                   <View style={styles.inputContainer}>
                     <Text style={styles.inputLabel}>Email Address</Text>
@@ -342,9 +342,9 @@ const Auth = () => {
                       </LinearGradient>
                     </TouchableOpacity>
                   </Animated.View>
-                </ScrollView>
+                </>
               )}
-            </View>
+            </ScrollView>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -403,8 +403,11 @@ const styles = StyleSheet.create({
   },
   scrollableContent: {
     flex: 1,
+  },
+  scrollableContentContainer: {
     paddingHorizontal: 24,
     paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    flexGrow: 1,
   },
   logoContainer: {
     alignItems: 'center',
@@ -540,13 +543,6 @@ const styles = StyleSheet.create({
   continueButtonTextDisabled: {
     color: Colors.textPrimary,
     opacity: 0.7,
-  },
-  emailScrollView: {
-    flex: 1,
-  },
-  emailScrollContent: {
-    flexGrow: 1,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
   },
 });
 

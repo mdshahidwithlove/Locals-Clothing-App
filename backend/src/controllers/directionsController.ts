@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import { getConfig } from '../services/configService';
 
 /**
  * Get directions from Google Directions API
@@ -15,7 +16,7 @@ export async function getDirections(req: Request, res: Response) {
       });
     }
 
-    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+    const apiKey = getConfig("GOOGLE_MAPS_API_KEY");
 
     if (!apiKey) {
       return res.status(500).json({

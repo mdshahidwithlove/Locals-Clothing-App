@@ -22,6 +22,7 @@ import {
   updateVerificationStatus,
   updateStoreStatus,
 } from './admin.controller';
+import { getSettings, updateSettings } from './settingsController';
 import { isAdminAuthenticated } from './admin.middleware';
 
 const router = Router();
@@ -66,5 +67,9 @@ router.patch('/stores/:id/status', isAdminAuthenticated, updateStoreStatus);
 router.get('/verification/queue/:role', isAdminAuthenticated, getVerificationQueue);
 router.get('/verification/users/:userId', isAdminAuthenticated, getVerificationDetail);
 router.patch('/verification/users/:userId/status', isAdminAuthenticated, updateVerificationStatus);
+
+// Settings
+router.get('/settings', isAdminAuthenticated, getSettings);
+router.patch('/settings', isAdminAuthenticated, updateSettings);
 
 export default router;

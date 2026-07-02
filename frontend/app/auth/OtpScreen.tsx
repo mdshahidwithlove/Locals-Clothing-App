@@ -9,7 +9,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
-  Animated
+  Animated,
+  ScrollView
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors } from '@/constants/colors';
@@ -198,7 +199,7 @@ const OtpScreen = () => {
       
       <KeyboardAvoidingView 
         style={styles.keyboardContainer} 
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
       >
         {/* Header */}
@@ -226,7 +227,12 @@ const OtpScreen = () => {
             </View>
 
             {/* Scrollable Content Section */}
-            <View style={styles.scrollableContent}>
+            <ScrollView 
+              style={styles.scrollableContent}
+              contentContainerStyle={styles.scrollableContentContainer}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
               {/* OTP Input */}
               <View style={styles.otpContainer}>
                 {otp.map((digit, index) => (
@@ -311,7 +317,7 @@ const OtpScreen = () => {
                   Your OTP is secure and will expire in 5 minutes
                 </Text>
               </View>
-            </View>
+            </ScrollView>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -380,8 +386,11 @@ const styles = StyleSheet.create({
   },
   scrollableContent: {
     flex: 1,
+  },
+  scrollableContentContainer: {
     paddingHorizontal: 24,
     paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    flexGrow: 1,
   },
   logoContainer: {
     alignItems: 'center',

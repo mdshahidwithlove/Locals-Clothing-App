@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { View, Text, TextInput, StyleSheet, FlatList, Pressable } from "react-native";
+import { View, Text, TextInput, StyleSheet, FlatList, Pressable, KeyboardAvoidingView, Platform } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -32,37 +32,42 @@ const CountryPickerScreen = () => {
       {/* Scrim to allow closing by tapping outside */}
       <Pressable style={styles.scrim} onPress={() => router.back()} />
 
-      {/* Half-height bottom sheet */}
-      <LinearGradient
-        colors={Colors.gradients.card as [string, string]}
-        style={styles.sheet}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+      {/* Half-height bottom sheet wrapper */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.keyboardAvoid}
       >
-        <View style={styles.grabber} />
-        <Text style={styles.title}>Choose your country</Text>
-        <TextInput
-          placeholder="Search country"
-          placeholderTextColor={Colors.textMuted}
-          style={styles.search}
-          value={query}
-          onChangeText={setQuery}
-          autoFocus
-        />
-        <FlatList
-          data={filtered}
-          keyExtractor={(item) => item.code}
-          renderItem={({ item }) => (
-            <Pressable style={styles.row} onPress={() => select(item)}>
-              <Text style={styles.flag}>{item.flag}</Text>
-              <Text style={styles.name}>{item.name}</Text>
-              <Text style={styles.code}>{item.dialCode}</Text>
-            </Pressable>
-          )}
-          ItemSeparatorComponent={() => <View style={styles.sep} />}
-          style={{ flexGrow: 0 }}
-        />
-      </LinearGradient>
+        <LinearGradient
+          colors={Colors.gradients.background as [string, string]}
+          style={styles.sheet}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <View style={styles.grabber} />
+          <Text style={styles.title}>Choose your country</Text>
+          <TextInput
+            placeholder="Search country"
+            placeholderTextColor={Colors.textMuted}
+            style={styles.search}
+            value={query}
+            onChangeText={setQuery}
+            autoFocus
+          />
+          <FlatList
+            data={filtered}
+            keyExtractor={(item) => item.code}
+            renderItem={({ item }) => (
+              <Pressable style={styles.row} onPress={() => select(item)}>
+                <Text style={styles.flag}>{item.flag}</Text>
+                <Text style={styles.name}>{item.name}</Text>
+                <Text style={styles.code}>{item.dialCode}</Text>
+              </Pressable>
+            )}
+            ItemSeparatorComponent={() => <View style={styles.sep} />}
+            style={{ flexGrow: 0 }}
+          />
+        </LinearGradient>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
@@ -73,19 +78,23 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     justifyContent: 'flex-end'
   },
+  keyboardAvoid: {
+    width: '100%',
+    justifyContent: 'flex-end',
+  },
   scrim: {
     ...StyleSheet.absoluteFillObject,
     // Use theme-tinted scrim so the background gradient remains visible
     backgroundColor: 'rgba(7,11,20,0.35)'
   },
   sheet: {
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.background,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingTop: 8,
     paddingHorizontal: 16,
     paddingBottom: 24,
-    borderTopColor: Colors.borderBlue,
+    borderTopColor: Colors.border,
     borderTopWidth: StyleSheet.hairlineWidth,
     maxHeight: '75%'
   },
@@ -94,7 +103,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 5,
     borderRadius: 3,
-    backgroundColor: Colors.borderBlue,
+    backgroundColor: Colors.border,
     marginBottom: 8,
     opacity: 0.8
   },
@@ -107,9 +116,9 @@ const styles = StyleSheet.create({
   search: {
     height: 44,
     borderRadius: 10,
-    backgroundColor: Colors.surfaceElevated,
+    backgroundColor: Colors.backgroundSecondary,
     borderWidth: 1,
-    borderColor: Colors.borderBlue,
+    borderColor: Colors.border,
     paddingHorizontal: 12,
     color: Colors.textPrimary,
     marginBottom: 10
@@ -119,7 +128,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 12
   },
-  sep: { height: StyleSheet.hairlineWidth, backgroundColor: Colors.borderBlue },
+  sep: { height: StyleSheet.hairlineWidth, backgroundColor: Colors.border },
   flag: { fontSize: 20, width: 28 },
   name: { flex: 1, color: Colors.textPrimary, fontSize: 14 },
   code: { color: Colors.textSecondary, fontSize: 14 }

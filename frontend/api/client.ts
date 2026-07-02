@@ -21,9 +21,12 @@ apiClient.interceptors.request.use(async (config) => {
     // Log outgoing requests
     console.log(`🚀 ${config.method?.toUpperCase()} ${config.url}`);
     
-    // Add ngrok bypass header only if using ngrok
+    // Add bypass headers for tunnel services (ngrok and localtunnel)
     if (baseUrl?.includes('ngrok')) {
         config.headers['ngrok-skip-browser-warning'] = 'true';
+    }
+    if (baseUrl?.includes('loca.lt') || baseUrl?.includes('localtunnel')) {
+        config.headers['Bypass-Tunnel-Reminder'] = 'true';
     }
     
     // Add JWT token to requests if available

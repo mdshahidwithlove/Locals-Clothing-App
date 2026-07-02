@@ -1,21 +1,9 @@
-import { S3Client } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { supabase } from '../config/supabase';
 import { v4 as uuidv4 } from 'uuid';
 
-// Configure AWS SDK v3
-const s3Client = new S3Client({
-    endpoint: process.env.R2_ENDPOINT,
-    credentials: {
-        accessKeyId: process.env.R2_ACCESS_KEY || '',
-        secretAccessKey: process.env.R2_SECRET_KEY || '',
-    },
-    region: 'auto'
-});
+const BUCKET_NAME = process.env.SUPABASE_BUCKET_NAME || 'locals-bucket';
 
-const BUCKET_NAME = process.env.R2_BUCKET_NAME || 'klinic-bucket';
-
-// Generate a presigned URL for file upload
+// Generate a presigned URL for file upload using Supabase Storage
 export const generateUploadUrlProfile = async (
     fileType: string, 
     fileName: string, 
@@ -43,82 +31,68 @@ export const generateUploadUrlProfile = async (
             key = `${role}/${userId}/profile/${uniqueFileName}`;
         }
 
-        const command = new PutObjectCommand({
-            Bucket: BUCKET_NAME,
-            Key: key,
-            ContentType: getMimeType(fileExtension || '')
-        });
+        // Generate a signed upload URL from Supabase (valid for 1 hour)
+        const { data, error } = await supabase.storage
+            .from(BUCKET_NAME)
+            .createSignedUploadUrl(key);
 
-        const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 }); // URL expires in 1 hour
-        
+        if (error) {
+            console.error('Supabase signed URL generation failed:', error);
+            throw error;
+        }
+
+        if (!data || !data.signedUrl) {
+            throw new Error('Failed to generate signed upload URL from Supabase');
+        }
+
         // Generate the public URL that will be accessible after upload
-        const publicUrl = `https://pub-0f703feb53794f768ba649b826a64db4.r2.dev/${key}`;
-        
-        return { uploadUrl, publicUrl };
+        const { data: publicData } = supabase.storage
+            .from(BUCKET_NAME)
+            .getPublicUrl(key);
+
+        return { 
+            uploadUrl: data.signedUrl, 
+            publicUrl: publicData.publicUrl 
+        };
     } catch (error) {
         console.error('Error generating upload URL:', error);
         throw new Error('Failed to generate upload URL');
     }
 };
 
-// Delete file from R2 storage
+// Delete file from Supabase storage
 export const deleteFileFromR2 = async (fileUrl: string): Promise<void> => {
     try {
         if (!fileUrl) return;
         
         // Extract the key from the URL
-        // Example URL: https://pub-0f703feb53794f768ba649b826a64db4.r2.dev/user/6820f9377f5263b276ea76e9/33614f5c-084e-4725-b339-46056f7be568.pdf
+        let key = '';
+        if (fileUrl.includes('/' + BUCKET_NAME + '/')) {
+            key = fileUrl.split('/' + BUCKET_NAME + '/')[1];
+        } else {
+            // fallback: parse pathname
+            const url = new URL(fileUrl);
+            const parts = url.pathname.split('/');
+            const bucketIndex = parts.indexOf(BUCKET_NAME);
+            if (bucketIndex !== -1 && bucketIndex < parts.length - 1) {
+                key = parts.slice(bucketIndex + 1).join('/');
+            } else {
+                key = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
+            }
+        }
         
-        // Parse the URL to extract just the path portion
-        const url = new URL(fileUrl);
-        const key = url.pathname.startsWith('/') ? url.pathname.substring(1) : url.pathname;
+        console.log(`Attempting to delete file from Supabase with key: ${key}`);
         
-        console.log(`Attempting to delete file with key: ${key}`);
-        console.log(`Using bucket: ${BUCKET_NAME}`);
-        
-        const command = new DeleteObjectCommand({
-            Bucket: BUCKET_NAME,
-            Key: key
-        });
-        
-        await s3Client.send(command);
-        console.log(`File deleted: ${key}`);
+        const { data, error } = await supabase.storage
+            .from(BUCKET_NAME)
+            .remove([key]);
+
+        if (error) {
+            console.error('Error deleting file from Supabase Storage:', error);
+        } else {
+            console.log(`File deleted successfully: ${key}`, data);
+        }
     } catch (error) {
-        console.error('Error deleting file from R2:', error);
-        console.error('Error details:', JSON.stringify(error, null, 2));
-        // We don't throw here to prevent the main operation from failing
-        // if file deletion fails
+        console.error('Error deleting file from Supabase Storage:', error);
     }
 };
-
-// Helper function to determine MIME type based on file extension
-const getMimeType = (extension: string): string => {
-    const mimeTypes: Record<string, string> = {
-        'pdf': 'application/pdf',
-        'jpg': 'image/jpeg',
-        'jpeg': 'image/jpeg',
-        'jfif': 'image/jpeg',
-        'png': 'image/png',
-        'gif': 'image/gif',
-        'webp': 'image/webp',
-        'bmp': 'image/bmp',
-        'tiff': 'image/tiff',
-        'tif': 'image/tiff',
-        'svg': 'image/svg+xml',
-        'heic': 'image/heic',
-        'heif': 'image/heif',
-        'avif': 'image/avif',
-        'mp4': 'video/mp4',
-        'mov': 'video/quicktime',
-        'm4v': 'video/x-m4v',
-        'webm': 'video/webm',
-        'avi': 'video/avi',
-        '3gp': 'video/3gpp',
-        'mkv': 'video/x-matroska',
-        'txt': 'text/plain',
-        'doc': 'application/msword',
-        'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    };
-
-    return mimeTypes[extension.toLowerCase()] || 'application/octet-stream';
-}; 

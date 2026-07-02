@@ -11,6 +11,7 @@ import {
   Store,
   ShieldCheck,
   X,
+  Settings,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { cn } from '@/lib/utils';
@@ -33,6 +34,7 @@ const MENU_ITEMS: MenuItem[] = [
   { icon: Store, label: 'Stores', href: '/dashboard/stores' },
   { icon: ShieldCheck, label: 'Merchant verify', href: '/dashboard/verification/merchants' },
   { icon: ShieldCheck, label: 'Delivery verify', href: '/dashboard/verification/delivery' },
+  { icon: Settings, label: 'Settings', href: '/dashboard/settings' },
 ];
 
 function NavItem({
