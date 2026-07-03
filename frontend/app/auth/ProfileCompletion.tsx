@@ -56,7 +56,7 @@ const ProfileCompletion = () => {
   }, [isValidName, isValidGender, isValidRole]);
 
   const handleNameChange = useCallback((text: string) => {
-    setName(text.trim());
+    setName(text);
     // Clear error when user starts typing
     if (errors.name) {
       setErrors(prev => ({ ...prev, name: undefined }));
