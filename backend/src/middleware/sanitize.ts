@@ -15,6 +15,12 @@ import type { Request, Response, NextFunction } from "express";
 function sanitizeString(value: string): string {
   if (typeof value !== 'string') return value;
   
+  // If the value is a URL, bypass HTML entity escaping to prevent corruption (e.g. escaping slashes)
+  const isUrl = /^https?:\/\/[^\s$.?#].[^\s]*$/i.test(value);
+  if (isUrl) {
+    return value.replace(/\0/g, '').trim();
+  }
+  
   // Remove script tags and their content
   let sanitized = value.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
   
