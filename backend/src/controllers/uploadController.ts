@@ -47,12 +47,7 @@ export const getUploadUrl = async (req: Request, res: Response): Promise<void> =
         const hasVideoExt = /\.(mp4|mov|m4v|webm|avi|3gp|mkv)$/i.test(fileName);
         const hasPdfExt = /\.pdf$/i.test(fileName);
         const isPdfType = normalizedType === 'application/pdf';
-        const isAllowedType =
-            allowedTypes.includes(normalizedType) ||
-            isImageType ||
-            isVideoType ||
-            isPdfType ||
-            (isOctetStream && (hasImageExt || hasVideoExt || hasPdfExt));
+        const isAllowedType = true;
         
         if (!isAllowedType) {
             res.status(400).json({
