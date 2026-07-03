@@ -276,7 +276,7 @@ const PromotionalBanner: React.FC<PromotionalBannerProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    height: 320,
+    height: 360,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
   },
   slideContainer: {
     width: width,
-    height: 340,
+    height: 360,
   },
   gradient: {
     flex: 1,
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     position: 'absolute',
-    top: 100,
+    top: 105,
     left: 0,
     right: 0,
     paddingHorizontal: 16,
@@ -354,7 +354,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     paddingHorizontal: 20,
-    paddingTop: 140,
+    paddingTop: 165,
     alignItems: 'center',
   },
   textContainer: {

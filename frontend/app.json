@@ -27,6 +27,11 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.Locals1.app",
       "versionCode": 5,
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBQZGl5wZhCM06tJa6lDLjwc3pFS0QP9J8"
+        }
+      },
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
@@ -53,9 +58,9 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 140,
           "resizeMode": "contain",
-          "backgroundColor": "#FFD700",
+          "backgroundColor": "#FFFFFF",
           "dark": {
-            "backgroundColor": "#FFD700"
+            "backgroundColor": "#FFFFFF"
           }
         }
       ]

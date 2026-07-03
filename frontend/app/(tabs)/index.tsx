@@ -130,7 +130,7 @@ export default function HomeScreen() {
   );
 
   const handleOrderPress = useCallback(() => {
-    console.log('Order now pressed');
+    scrollViewRef.current?.scrollTo({ y: 360, animated: true });
   }, []);
 
   useEffect(() => {
@@ -142,11 +142,11 @@ export default function HomeScreen() {
   const handleScroll = (event: any) => {
     const offsetY = event.nativeEvent.contentOffset.y;
     
-    // Make search bar sticky after scrolling past banner (around 280px)
-    setIsSearchBarSticky(offsetY > 280);
+    // Make search bar sticky after scrolling past banner (around 320px)
+    setIsSearchBarSticky(offsetY > 320);
     
-    // Make category icons sticky after scrolling past search bar area (around 350px)
-    setIsCategorySticky(offsetY > 350);
+    // Make category icons sticky after scrolling past search bar area (around 390px)
+    setIsCategorySticky(offsetY > 390);
   };
 
   return (
