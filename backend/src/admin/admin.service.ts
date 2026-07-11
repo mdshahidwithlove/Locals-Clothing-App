@@ -217,9 +217,18 @@ export class AdminService {
   }
 
   // ─── Dashboard: Analytics Overview ────────────────────────────────────────
-  static async getAnalyticsOverview(): Promise<any> {
+  static async getAnalyticsOverview(query?: { dateFrom?: string; dateTo?: string }): Promise<any> {
     const now = new Date();
+
+    // Parse date filters
+    let matchRange: any = {};
+    if (query?.dateFrom || query?.dateTo) {
+      matchRange = AdminService.parseDateRangeFilter(query.dateFrom, query.dateTo) || {};
+    }
+
+    // Default to last 30 days if no date range is provided
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const dateFilter = matchRange.createdAt || { $gte: thirtyDaysAgo };
 
     // Run all count queries in parallel
     const [
@@ -229,12 +238,14 @@ export class AdminService {
       totalCustomers,
       totalOrders,
       totalStores,
-      newUsersLast30,
+      newUsersInPeriod,
       roleBreakdown,
       ordersTrendDaily,
       ordersTrendWeekly,
       ordersTrendMonthly,
       categoryWiseSales,
+      rangeStatsResult,
+      refundsResult
     ] = await Promise.all([
       UserModel.countDocuments(),
       UserModel.countDocuments({ role: 'Merchant' }),
@@ -242,13 +253,13 @@ export class AdminService {
       UserModel.countDocuments({ role: 'User' }),
       OrderModel.countDocuments(),
       StoreModel.countDocuments(),
-      UserModel.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+      UserModel.countDocuments({ createdAt: dateFilter }),
       UserModel.aggregate([
         { $group: { _id: '$role', count: { $sum: 1 } } },
       ]),
-      // Daily orders trend (last 30 days)
+      // Daily orders trend (last 30 days or in range)
       OrderModel.aggregate([
-        { $match: { createdAt: { $gte: thirtyDaysAgo } } },
+        { $match: { createdAt: dateFilter } },
         {
           $group: {
             _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
@@ -258,9 +269,9 @@ export class AdminService {
         },
         { $sort: { _id: 1 } },
       ]),
-      // Weekly orders trend (last 12 weeks)
+      // Weekly orders trend (last 12 weeks or in range)
       OrderModel.aggregate([
-        { $match: { createdAt: { $gte: new Date(now.getTime() - 84 * 24 * 60 * 60 * 1000) } } },
+        { $match: { createdAt: dateFilter } },
         {
           $group: {
             _id: { $isoWeek: '$createdAt' },
@@ -271,9 +282,9 @@ export class AdminService {
         },
         { $sort: { year: 1, _id: 1 } },
       ]),
-      // Monthly orders trend (last 12 months)
+      // Monthly orders trend (last 12 months or in range)
       OrderModel.aggregate([
-        { $match: { createdAt: { $gte: new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000) } } },
+        { $match: { createdAt: dateFilter } },
         {
           $group: {
             _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
@@ -283,12 +294,12 @@ export class AdminService {
         },
         { $sort: { _id: 1 } },
       ]),
-      // Category-wise sales from order items (last 30 days only for high performance)
+      // Category-wise sales from order items in date range
       OrderModel.aggregate([
         { 
           $match: { 
             status: { $nin: ['Cancelled', 'Rejected'] },
-            createdAt: { $gte: thirtyDaysAgo }
+            createdAt: dateFilter
           } 
         },
         { $unwind: '$orderItems' },
@@ -310,6 +321,34 @@ export class AdminService {
         },
         { $sort: { totalRevenue: -1 } },
       ]),
+      // Detailed Financial Summary in range
+      OrderModel.aggregate([
+        { $match: { status: { $nin: ['Cancelled', 'Rejected'] }, createdAt: dateFilter } },
+        {
+          $group: {
+            _id: null,
+            totalOrders: { $sum: 1 },
+            revenue: { $sum: '$totalAmount' },
+            deliveryFees: { $sum: '$deliveryFee' },
+            platformFees: {
+              $sum: { $cond: [{ $gt: ['$platformFee', 0] }, '$platformFee', { $multiply: ['$totalAmount', 0.05] }] }
+            },
+            storeEarnings: {
+              $sum: { $subtract: ['$itemsTotal', { $cond: [{ $gt: ['$platformFee', 0] }, '$platformFee', { $multiply: ['$totalAmount', 0.05] }] }] }
+            }
+          }
+        }
+      ]),
+      // Refunded amount in range (Loss)
+      PaymentModel.aggregate([
+        { $match: { paymentStatus: 'Refunded', createdAt: dateFilter } },
+        {
+          $group: {
+            _id: null,
+            totalRefunded: { $sum: '$amount' }
+          }
+        }
+      ])
     ]);
 
     // Format role breakdown into an object
@@ -318,6 +357,9 @@ export class AdminService {
       roles[r._id || 'Unknown'] = r.count;
     });
 
+    const rangeStats = rangeStatsResult[0] || { totalOrders: 0, revenue: 0, deliveryFees: 0, platformFees: 0, storeEarnings: 0 };
+    const totalRefunded = refundsResult[0]?.totalRefunded || 0;
+
     return {
       totalUsers,
       totalMerchants,
@@ -325,7 +367,7 @@ export class AdminService {
       totalCustomers,
       totalOrders,
       totalStores,
-      newUsersLast30Days: newUsersLast30,
+      newUsersLast30Days: newUsersInPeriod,
       roleBreakdown: roles,
       ordersTrend: {
         daily: ordersTrendDaily.map((d: any) => ({ date: d._id, count: d.count, revenue: d.revenue })),
@@ -337,6 +379,16 @@ export class AdminService {
         totalSold: c.totalSold,
         totalRevenue: c.totalRevenue,
       })),
+      financials: {
+        totalOrders: rangeStats.totalOrders,
+        revenue: Math.round(rangeStats.revenue),
+        deliveryFees: Math.round(rangeStats.deliveryFees),
+        platformFees: Math.round(rangeStats.platformFees),
+        storeEarnings: Math.round(rangeStats.storeEarnings),
+        refunds: Math.round(totalRefunded),
+        profit: Math.round(rangeStats.platformFees),
+        loss: Math.round(totalRefunded)
+      }
     };
   }
 

@@ -7,7 +7,11 @@ import {
   TrendingUp,
   UserPlus,
   Bell,
+  DollarSign,
+  ArrowUpRight,
+  ArrowDownRight,
 } from 'lucide-react';
+import DateRangeFilterBar from '@/components/admin/DateRangeFilterBar';
 import {
   ResponsiveContainer,
   LineChart,
@@ -50,11 +54,22 @@ interface AnalyticsData {
     monthly: { month: string; count: number; revenue: number }[];
   };
   categoryWiseSales: { category: string; totalSold: number; totalRevenue: number }[];
+  financials?: {
+    totalOrders: number;
+    revenue: number;
+    deliveryFees: number;
+    platformFees: number;
+    storeEarnings: number;
+    refunds: number;
+    profit: number;
+    loss: number;
+  };
 }
 
 type TrendView = 'daily' | 'weekly' | 'monthly';
 
 const ROLE_COLORS = ['#b45309', '#15803d', '#0369a1', '#7c3aed', '#c2410c', '#57534e'];
+const fmt = (v: number) => '₹' + Math.round(v).toLocaleString('en-IN');
 
 export default function AnalyticsSection() {
   const { admin } = useAuthStore();
@@ -65,6 +80,8 @@ export default function AnalyticsSection() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [trendView, setTrendView] = useState<TrendView>('daily');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   const greeting = useMemo(() => {
     const h = new Date().getHours();
@@ -73,10 +90,11 @@ export default function AnalyticsSection() {
     return 'Good evening';
   }, []);
 
-  const load = () => {
+  const load = (df = dateFrom, dt = dateTo) => {
     setLoading(true);
     setError('');
-    Promise.all([fetchAnalyticsOverview(), fetchAdminNotifications()])
+    const params = df || dt ? { dateFrom: df, dateTo: dt } : undefined;
+    Promise.all([fetchAnalyticsOverview(params), fetchAdminNotifications()])
       .then(([overviewData, notificationData]) => {
         setData(overviewData);
         setNotifications(notificationData || []);
@@ -90,6 +108,29 @@ export default function AnalyticsSection() {
   useEffect(() => {
     load();
   }, []);
+
+  const handleApply = () => {
+    load(dateFrom, dateTo);
+  };
+
+  const handleClear = () => {
+    setDateFrom('');
+    setDateTo('');
+    load('', '');
+  };
+
+  const handlePresetDays = (days: number) => {
+    const to = new Date();
+    const from = new Date();
+    from.setDate(to.getDate() - days + 1);
+    
+    const toStr = to.toISOString().split('T')[0];
+    const fromStr = from.toISOString().split('T')[0];
+    
+    setDateFrom(fromStr);
+    setDateTo(toStr);
+    load(fromStr, toStr);
+  };
 
   const trendChartData = useMemo(() => {
     if (!data) return [];
@@ -177,44 +218,131 @@ export default function AnalyticsSection() {
         description="Platform snapshot — order cadence, role mix, and category revenue. Names and counts appear in chart legends and tooltips."
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <StatCard
-          icon={Users}
-          label="Total users"
-          value={data.totalUsers}
-          hint={`+${data.newUsersLast30Days.toLocaleString('en-IN')} in the last 30 days`}
-          iconClassName="bg-sky-100 text-sky-800"
+      <div className="mb-6">
+        <DateRangeFilterBar
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onDateFromChange={setDateFrom}
+          onDateToChange={setDateTo}
+          onApply={handleApply}
+          onClear={handleClear}
+          onPresetDays={handlePresetDays}
+          disabled={loading}
         />
-        <StatCard
-          icon={ShoppingCart}
-          label="Orders"
-          value={data.totalOrders}
-          iconClassName="bg-amber-100 text-amber-900"
-        />
-        <StatCard
-          icon={Store}
-          label="Stores"
-          value={data.totalStores}
-          iconClassName="bg-emerald-100 text-emerald-800"
-        />
-        <StatCard
-          icon={Truck}
-          label="Delivery partners"
-          value={data.totalDeliveryPartners}
-          iconClassName="bg-violet-100 text-violet-800"
-        />
-        <StatCard
-          icon={UserPlus}
-          label="Customers"
-          value={data.totalCustomers}
-          iconClassName="bg-rose-100 text-rose-800"
-        />
-        <StatCard
-          icon={Users}
-          label="Merchants"
-          value={data.totalMerchants}
-          iconClassName="bg-orange-100 text-orange-900"
-        />
+      </div>
+
+      {/* Range-based Financial Summary */}
+      {data.financials && (
+        <div className="mb-8">
+          <h2 className="text-lg font-bold text-stone-800 mb-4 flex items-center gap-2">
+            <DollarSign className="h-5 w-5 text-amber-700" />
+            Financial Performance Summary (Selected Period)
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-2xl border border-stone-200/90 bg-white p-5 shadow-sm">
+              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-stone-500">
+                <ShoppingCart className="h-4 w-4 text-sky-700" />
+                Gross Sales (GMV)
+              </div>
+              <p className="mt-2 text-2xl font-bold text-stone-900 tabular-nums">
+                {fmt(data.financials.revenue)}
+              </p>
+              <span className="text-[10px] text-stone-400 mt-1 block">
+                {data.financials.totalOrders} non-cancelled orders in period
+              </span>
+            </div>
+
+            <div className="rounded-2xl border border-stone-200/90 bg-white p-5 shadow-sm">
+              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-stone-500">
+                <ArrowUpRight className="h-4 w-4 text-emerald-700" />
+                Net Profit (Platform Commission)
+              </div>
+              <p className="mt-2 text-2xl font-bold text-emerald-800 tabular-nums">
+                {fmt(data.financials.profit)}
+              </p>
+              <span className="text-[10px] text-stone-400 mt-1 block">
+                Total commissions collected
+              </span>
+            </div>
+
+            <div className="rounded-2xl border border-stone-200/90 bg-white p-5 shadow-sm">
+              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-stone-500">
+                <ArrowDownRight className="h-4 w-4 text-red-700" />
+                Net Loss (Refunds)
+              </div>
+              <p className="mt-2 text-2xl font-bold text-red-800 tabular-nums">
+                {fmt(data.financials.loss)}
+              </p>
+              <span className="text-[10px] text-stone-400 mt-1 block">
+                Total refund transactions processed
+              </span>
+            </div>
+
+            <div className="rounded-2xl border border-stone-200/90 bg-white p-5 shadow-sm">
+              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-stone-500">
+                <Users className="h-4 w-4 text-stone-500" />
+                Settlement & Delivery Shares
+              </div>
+              <div className="mt-2 space-y-1">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-stone-500">Stores:</span>
+                  <span className="font-semibold text-stone-800">{fmt(data.financials.storeEarnings)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-stone-500">Riders:</span>
+                  <span className="font-semibold text-stone-800">{fmt(data.financials.deliveryFees)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Registration & Directory Overview */}
+      <div className="mb-8">
+        <h2 className="text-lg font-bold text-stone-800 mb-4 flex items-center gap-2">
+          <Users className="h-5 w-5 text-sky-700" />
+          Registrations & Directory Overview
+        </h2>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <StatCard
+            icon={Users}
+            label="Total users"
+            value={data.totalUsers}
+            hint={`+${data.newUsersLast30Days.toLocaleString('en-IN')} in selected period`}
+            iconClassName="bg-sky-100 text-sky-800"
+          />
+          <StatCard
+            icon={ShoppingCart}
+            label="Orders"
+            value={data.totalOrders}
+            iconClassName="bg-amber-100 text-amber-900"
+          />
+          <StatCard
+            icon={Store}
+            label="Stores"
+            value={data.totalStores}
+            iconClassName="bg-emerald-100 text-emerald-800"
+          />
+          <StatCard
+            icon={Truck}
+            label="Delivery partners"
+            value={data.totalDeliveryPartners}
+            iconClassName="bg-violet-100 text-violet-800"
+          />
+          <StatCard
+            icon={UserPlus}
+            label="Customers"
+            value={data.totalCustomers}
+            iconClassName="bg-rose-100 text-rose-800"
+          />
+          <StatCard
+            icon={Users}
+            label="Merchants"
+            value={data.totalMerchants}
+            iconClassName="bg-orange-100 text-orange-900"
+          />
+        </div>
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-3">

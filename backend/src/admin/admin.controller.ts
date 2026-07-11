@@ -241,7 +241,21 @@ export async function getAdminProfile(req: CustomRequest, res: Response): Promis
 // Analytics Overview
 export async function getAnalyticsOverview(req: CustomRequest, res: Response): Promise<Response> {
   try {
-    const data = await AdminService.getAnalyticsOverview();
+    const parsed = z.object({
+      dateFrom: dateYmd,
+      dateTo: dateYmd,
+    }).safeParse(req.query);
+
+    if (!parsed.success) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid query parameters',
+        errors: parsed.error.issues,
+      });
+    }
+
+    const { dateFrom, dateTo } = parsed.data;
+    const data = await AdminService.getAnalyticsOverview({ dateFrom, dateTo });
     return res.status(200).json({
       success: true,
       message: 'Analytics overview retrieved successfully',

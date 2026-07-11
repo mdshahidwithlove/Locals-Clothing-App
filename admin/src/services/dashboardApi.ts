@@ -1,8 +1,8 @@
 import api from './api';
 
 // ─── Analytics ──────────────────────────────────────────────────────────────
-export async function fetchAnalyticsOverview() {
-  const res = await api.get('/api/v1/admin/analytics/overview');
+export async function fetchAnalyticsOverview(params?: { dateFrom?: string; dateTo?: string }) {
+  const res = await api.get('/api/v1/admin/analytics/overview', { params });
   return res.data.data;
 }
 
