@@ -221,14 +221,14 @@ export class AdminService {
     const now = new Date();
 
     // Parse date filters
-    let matchRange: any = {};
+    let matchRange: any = null;
     if (query?.dateFrom || query?.dateTo) {
-      matchRange = AdminService.parseDateRangeFilter(query.dateFrom, query.dateTo) || {};
+      matchRange = AdminService.parseDateRangeFilter(query.dateFrom, query.dateTo);
     }
 
     // Default to last 30 days if no date range is provided
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const dateFilter = matchRange.createdAt || { $gte: thirtyDaysAgo };
+    const dateFilter = matchRange || { $gte: thirtyDaysAgo };
 
     // Run all count queries in parallel
     const [

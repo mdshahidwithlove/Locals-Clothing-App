@@ -30,7 +30,13 @@ const paginationQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional(),
 });
 
-const dateYmd = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD').optional();
+const dateYmd = z
+  .string()
+  .optional()
+  .transform(val => (val === '' ? undefined : val))
+  .refine(val => !val || /^\d{4}-\d{2}-\d{2}$/.test(val), {
+    message: 'Use YYYY-MM-DD',
+  });
 
 const transactionsQuerySchema = paginationQuerySchema
   .extend({
