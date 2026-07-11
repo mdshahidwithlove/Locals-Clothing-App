@@ -238,7 +238,7 @@ export default function DeliverySection() {
                       <th className="px-4 py-3 sm:px-6">Deliveries</th>
                       <th className="px-4 py-3 sm:px-6">Completed</th>
                       <th className="px-4 py-3 sm:px-6">Earnings</th>
-                      <th className="px-4 py-3 sm:px-6">Cash In Hand</th>
+                      <th className="px-4 py-3 sm:px-6">Cash In Hand (Owed)</th>
                       <th className="px-4 py-3 sm:px-6">Rating</th>
                       <th className="px-4 py-3 sm:px-6">Verification</th>
                       <th className="px-4 py-3 sm:px-6">Joined</th>

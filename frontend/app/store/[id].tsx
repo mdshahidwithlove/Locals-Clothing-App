@@ -137,7 +137,7 @@ export default function StoreDetailScreen() {
 
     // 2. Filter by gender/tags
     if (selectedFilter) {
-      switch (selectedFilter) {
+      switch (selectedFilter.toLowerCase()) {
         case 'men':
           filtered = filtered.filter(p => p.category === 'Men');
           break;

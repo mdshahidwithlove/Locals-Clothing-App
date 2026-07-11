@@ -83,7 +83,7 @@ const FilterButtons: React.FC<FilterButtonsProps> = ({
             key={option.id}
             style={[
               styles.filterButton,
-              selectedFilter === option.id && styles.selectedFilterButton
+              selectedFilter?.toLowerCase() === option.id.toLowerCase() && styles.selectedFilterButton
             ]}
             onPress={() => onFilterSelect(option.id)}
             activeOpacity={0.7}
@@ -93,14 +93,14 @@ const FilterButtons: React.FC<FilterButtonsProps> = ({
                 <Ionicons
                   name={option.icon as any}
                   size={16}
-                  color={selectedFilter === option.id ? Colors.background : Colors.textPrimary}
+                  color={selectedFilter?.toLowerCase() === option.id.toLowerCase() ? Colors.background : Colors.textPrimary}
                   style={styles.buttonIcon}
                 />
               )}
               <Text
                 style={[
                   styles.buttonText,
-                  selectedFilter === option.id && styles.selectedButtonText
+                  selectedFilter?.toLowerCase() === option.id.toLowerCase() && styles.selectedButtonText
                 ]}
               >
                 {option.name}
@@ -108,11 +108,11 @@ const FilterButtons: React.FC<FilterButtonsProps> = ({
               {option.count && (
                 <View style={[
                   styles.countBadge,
-                  selectedFilter === option.id && styles.selectedCountBadge
+                  selectedFilter?.toLowerCase() === option.id.toLowerCase() && styles.selectedCountBadge
                 ]}>
                   <Text style={[
                     styles.countText,
-                    selectedFilter === option.id && styles.selectedCountText
+                    selectedFilter?.toLowerCase() === option.id.toLowerCase() && styles.selectedCountText
                   ]}>
                     {option.count}
                   </Text>
