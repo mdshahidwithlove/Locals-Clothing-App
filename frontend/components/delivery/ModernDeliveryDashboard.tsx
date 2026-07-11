@@ -138,7 +138,6 @@ const ModernDeliveryDashboard: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Stats Overview Cards */}
         <View style={styles.statsRow}>
           <View style={styles.statMiniCard}>
             <Text style={styles.statMiniValue}>{stats?.totalDeliveries || 0}</Text>
@@ -148,7 +147,10 @@ const ModernDeliveryDashboard: React.FC = () => {
             <Text style={styles.statMiniValue}>{getActiveDeliveries().length}</Text>
             <Text style={styles.statMiniLabel}>Active</Text>
           </View>
-          {/* Removed Earned card */}
+          <View style={styles.statMiniCard}>
+            <Text style={styles.statMiniValue}>₹{Math.round(stats?.totalEarnings || 0)}</Text>
+            <Text style={styles.statMiniLabel}>Earned</Text>
+          </View>
         </View>
       </LinearGradient>
 
@@ -177,10 +179,28 @@ const ModernDeliveryDashboard: React.FC = () => {
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#667eea']} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#FFD700']} tintColor='#FFD700' />
         }
         showsVerticalScrollIndicator={false}
       >
+        {/* Settlement Summary */}
+        {stats && (
+          <View style={styles.settlementCard}>
+            <Text style={styles.settlementTitle}>Settlement & Cash Summary</Text>
+            <View style={styles.settlementRow}>
+              <Text style={styles.settlementLabel}>Total Earnings (Delivery Fees)</Text>
+              <Text style={styles.settlementValue}>₹{Math.round(stats.totalEarnings || 0)}</Text>
+            </View>
+            <View style={styles.settlementRow}>
+              <Text style={styles.settlementLabel}>COD Cash In Hand (Unsubmitted)</Text>
+              <Text style={[styles.settlementValue, { color: '#E53935' }]}>₹{Math.round(stats.cashInHand || 0)}</Text>
+            </View>
+            <View style={[styles.settlementRow, styles.settlementTotalRow]}>
+              <Text style={styles.settlementTotalLabel}>Net Balance Owed to Us</Text>
+              <Text style={[styles.settlementTotalValue, { color: '#E53935' }]}>₹{Math.round(stats.netOwed || 0)}</Text>
+            </View>
+          </View>
+        )}
         {currentDeliveries.length === 0 ? (
           <View style={styles.emptyContainer}>
             <View style={styles.emptyIconContainer}>
@@ -643,6 +663,55 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#F57C00',
+  },
+  settlementCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+    marginBottom: 16,
+  },
+  settlementTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginBottom: 12,
+  },
+  settlementRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F5',
+  },
+  settlementLabel: {
+    fontSize: 13,
+    color: '#666',
+    fontWeight: '500',
+  },
+  settlementValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  settlementTotalRow: {
+    borderBottomWidth: 0,
+    paddingTop: 12,
+    paddingBottom: 2,
+  },
+  settlementTotalLabel: {
+    fontSize: 14,
+    color: '#212121',
+    fontWeight: '700',
+  },
+  settlementTotalValue: {
+    fontSize: 16,
+    fontWeight: '800',
   },
 });
 

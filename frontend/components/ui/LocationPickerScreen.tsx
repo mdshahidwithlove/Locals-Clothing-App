@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Platform, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Platform, Animated, Alert, TextInput } from 'react-native';
 import MapView, { PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { useLocation } from '@/contexts/LocationContext';
+import * as Location from 'expo-location';
 
 interface LocationPickerScreenProps {
   initialRegion?: Region; // ignored: we always start from the user's current location
@@ -22,6 +23,10 @@ const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
   const [address, setAddress] = useState<string>('');
   const [isGeocoding, setIsGeocoding] = useState<boolean>(false);
   const [isBootstrapping, setIsBootstrapping] = useState<boolean>(true);
+  
+  const mapRef = useRef<MapView>(null);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isSearching, setIsSearching] = useState<boolean>(false);
   
   // Pulsing animation for precise point
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -88,6 +93,37 @@ const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
     }
   };
 
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setIsSearching(true);
+    try {
+      const results = await Location.geocodeAsync(searchQuery);
+      if (results.length > 0) {
+        const { latitude, longitude } = results[0];
+        const nextRegion: Region = {
+          latitude,
+          longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        };
+        setRegion(nextRegion);
+        mapRef.current?.animateToRegion(nextRegion, 1000);
+        
+        setIsGeocoding(true);
+        const addr = await reverseGeocode(latitude, longitude);
+        setAddress(addr?.formattedAddress || searchQuery || '');
+      } else {
+        Alert.alert('Location Not Found', 'Could not find the location you searched for. Please try a different query.');
+      }
+    } catch (error) {
+      console.error('Geocoding error:', error);
+      Alert.alert('Search Error', 'Failed to search for location. Please check your internet connection.');
+    } finally {
+      setIsGeocoding(false);
+      setIsSearching(false);
+    }
+  };
+
   const handleConfirm = () => {
     if (!address || !region) return;
     onConfirm({ 
@@ -99,16 +135,37 @@ const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* Single Back Button in top left corner */}
-      <TouchableOpacity 
-        onPress={onClose}
-        style={styles.floatingBackButton}
-        activeOpacity={0.7}
-      >
-        <View style={styles.floatingBackCircle}>
-          <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
-        </View>
-      </TouchableOpacity>
+      {/* Integrated Back Button & Search Bar at the top */}
+      <View style={styles.searchContainer}>
+        <TouchableOpacity 
+          onPress={onClose}
+          style={styles.backButtonInline}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
+        </TouchableOpacity>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search for area, street, or landmark..."
+          placeholderTextColor={Colors.textSecondary}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          onSubmitEditing={handleSearch}
+          returnKeyType="search"
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton}>
+            <Ionicons name="close-circle" size={18} color={Colors.textSecondary} />
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity onPress={handleSearch} style={styles.searchButton} disabled={isSearching}>
+          {isSearching ? (
+            <ActivityIndicator size="small" color={Colors.primary} />
+          ) : (
+            <Ionicons name="search" size={20} color={Colors.primary} />
+          )}
+        </TouchableOpacity>
+      </View>
 
       {isBootstrapping ? (
         <View style={styles.center}>
@@ -126,8 +183,9 @@ const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
       ) : (
         <View style={{ flex: 1 }}>
           <MapView
+            ref={mapRef}
             style={{ flex: 1 }}
-            provider={PROVIDER_GOOGLE}
+            provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
             initialRegion={region}
             onRegionChangeComplete={onRegionChangeComplete}
             zoomControlEnabled={Platform.OS === 'android'}
@@ -228,6 +286,46 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  searchContainer: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 50 : 20,
+    left: 16,
+    right: 16,
+    zIndex: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.background,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    height: 54,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  backButtonInline: {
+    padding: 4,
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    height: '100%',
+    fontSize: 15,
+    color: Colors.textPrimary,
+    fontWeight: '500',
+  },
+  clearButton: {
+    padding: 4,
+    marginHorizontal: 4,
+  },
+  searchButton: {
+    padding: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   floatingBackButton: {
     position: 'absolute',

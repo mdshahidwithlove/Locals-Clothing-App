@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { Platform } from 'react-native';
+import { Platform, Alert } from 'react-native';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
@@ -92,6 +92,22 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     notificationListener.current = Notifications.addNotificationReceivedListener((notificationData) => {
       console.log('🔔 Foreground Notification Received:', notificationData);
       setNotification(notificationData);
+
+      const { title, body } = notificationData.request.content;
+      if (title && body) {
+        Alert.alert(title, body, [
+          {
+            text: "View Details",
+            onPress: () => {
+              const data = notificationData.request.content.data;
+              if (data) {
+                handleNotificationAction(data);
+              }
+            }
+          },
+          { text: "Dismiss", style: "cancel" }
+        ]);
+      }
     });
 
     // Listener for notification clicks/taps

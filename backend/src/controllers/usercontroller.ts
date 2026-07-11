@@ -248,6 +248,11 @@
 
         const freshUser = await UserModel.findById(user._id);
         const resolvedUser = await maybeGrandfatherVerification(freshUser || user);
+        
+        // Notify admins of user login (OTP verification)
+        const { notifyUserLogin } = require("../utils/notificationUtils");
+        notifyUserLogin(resolvedUser._id, resolvedUser.name || '', resolvedUser.phone || '', resolvedUser.role).catch((err: any) => console.error(err));
+
         return res.status(200).json({
             success: true,
             message: "OTP verified successfully. You are now logged in.",
@@ -354,6 +359,10 @@
             // Create user
             const user = await UserModel.create(userData);
             
+            // Notify admins of user registration
+            const { notifyUserRegistration } = require("../utils/notificationUtils");
+            notifyUserRegistration(user._id, user.name || '', user.phone || user.email || '', user.role).catch((err: any) => console.error(err));
+
             // Generate token
             const token = generateToken(user._id.toString());
             
@@ -550,6 +559,10 @@ async function loginUser(req: Request, res: Response): Promise<void> {
         const token = generateToken(user._id.toString());
 
         const resolvedUser = await maybeGrandfatherVerification(user);
+
+        // Notify admins of user login
+        const { notifyUserLogin } = require("../utils/notificationUtils");
+        notifyUserLogin(resolvedUser._id, resolvedUser.name || '', resolvedUser.phone || resolvedUser.email || '', resolvedUser.role).catch((err: any) => console.error(err));
 
         res.status(200).json({
             success: true,

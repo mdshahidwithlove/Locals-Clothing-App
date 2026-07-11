@@ -17,10 +17,10 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-// Removed gradient header per requirement
 import { Colors } from '@/constants/colors';
 import ProductCard from '@/components/user/ProductCard';
 import CategoryIcons from '@/components/user/CategoryIcons';
+import FilterButtons from '@/components/user/FilterButtons';
 import { useFavorites } from '@/hooks/useFavorites';
 import type { Store } from '@/types/store';
 import type { Product } from '@/types/product';
@@ -33,12 +33,15 @@ const { width: screenWidth } = Dimensions.get('window');
 
 export default function StoreDetailScreen() {
   const router = useRouter();
-  const { id, subcategory } = useLocalSearchParams();
+  const { id, subcategory, filter } = useLocalSearchParams();
   const { checkMultipleFavorites } = useFavorites();
   const [store, setStore] = useState<Store | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedFilter, setSelectedFilter] = useState<string | null>(
+    typeof filter === 'string' ? filter : null
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [currentImageIndex] = useState(0);
@@ -114,15 +117,49 @@ export default function StoreDetailScreen() {
 
   // CategoryIcons filter handler
   const handleCategoryIconPress = useCallback((subcategory: string) => {
-    // toggle selection
     const next = selectedCategory === subcategory ? null : subcategory;
     setSelectedCategory(next);
-    if (!next) {
-      setFilteredProducts(products);
-    } else {
-      setFilteredProducts(products.filter(p => p.subcategory === next));
+  }, [selectedCategory]);
+
+  const handleFilterSelect = useCallback((filterId: string) => {
+    const next = selectedFilter === filterId ? null : filterId;
+    setSelectedFilter(next);
+  }, [selectedFilter]);
+
+  // Combined product filtering logic
+  useEffect(() => {
+    let filtered = [...products];
+
+    // 1. Filter by subcategory
+    if (selectedCategory) {
+      filtered = filtered.filter(p => p.subcategory === selectedCategory);
     }
-  }, [selectedCategory, products]);
+
+    // 2. Filter by gender/tags
+    if (selectedFilter) {
+      switch (selectedFilter) {
+        case 'men':
+          filtered = filtered.filter(p => p.category === 'Men');
+          break;
+        case 'women':
+          filtered = filtered.filter(p => p.category === 'Women');
+          break;
+        case 'kids':
+          filtered = filtered.filter(p => p.category === 'Kids');
+          break;
+        case 'unisex':
+          filtered = filtered.filter(p => p.category === 'Unisex');
+          break;
+        case 'new':
+          const thirtyDaysAgo = new Date();
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+          filtered = filtered.filter(p => new Date(p.createdAt) > thirtyDaysAgo);
+          break;
+      }
+    }
+
+    setFilteredProducts(filtered);
+  }, [products, selectedCategory, selectedFilter]);
 
   // Handle product press
   const handleProductPress = useCallback((product: Product) => {
@@ -166,13 +203,15 @@ export default function StoreDetailScreen() {
     if (typeof subcategory === 'string' && subcategory.trim()) {
       setSelectedCategory(subcategory);
       setShowStoreCategories(true);
-      // apply filter once products are loaded
-      setFilteredProducts((prev) => {
-        const source = products.length ? products : prev;
-        return source.filter(p => p.subcategory === subcategory);
-      });
     }
-  }, [subcategory, products]);
+  }, [subcategory]);
+
+  // Apply incoming filter from route
+  useEffect(() => {
+    if (typeof filter === 'string' && filter.trim()) {
+      setSelectedFilter(filter);
+    }
+  }, [filter]);
 
   // Render loading state
   if (isLoading) {
@@ -354,15 +393,24 @@ export default function StoreDetailScreen() {
               <Ionicons name={showStoreCategories ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.textPrimary} />
             </TouchableOpacity>
             {showStoreCategories && (
-              <CategoryIcons
-                showHeader={false}
-                showSeeAll={false}
-                subcategories={storeSubcategories}
-                noMargin
-                screenType="category"
-                selectedSubcategory={selectedCategory || undefined}
-                onCategoryPress={handleCategoryIconPress}
-              />
+              <>
+                <CategoryIcons
+                  showHeader={false}
+                  showSeeAll={false}
+                  subcategories={storeSubcategories}
+                  noMargin
+                  screenType="category"
+                  selectedSubcategory={selectedCategory || undefined}
+                  onCategoryPress={handleCategoryIconPress}
+                />
+                <View style={{ marginTop: 10, marginBottom: 4 }}>
+                  <FilterButtons
+                    selectedFilter={selectedFilter}
+                    onFilterSelect={handleFilterSelect}
+                    screenType="category"
+                  />
+                </View>
+              </>
             )}
           </View>
 

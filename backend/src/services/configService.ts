@@ -10,6 +10,8 @@ const DEFAULT_SETTINGS_KEYS = [
   { key: "SUPABASE_URL", description: "Supabase Project URL" },
   { key: "SUPABASE_ANON_KEY", description: "Supabase Anon API Key" },
   { key: "SUPABASE_BUCKET_NAME", description: "Supabase Storage Bucket Name" },
+  { key: "PLATFORM_FEE_TYPE", description: "Platform Fee Type (flat or percentage)" },
+  { key: "PLATFORM_FEE_VALUE", description: "Platform Fee Value (flat rate in INR or percentage value)" },
 ];
 
 /**
@@ -21,7 +23,8 @@ export async function loadConfigCache(): Promise<void> {
     if (count === 0) {
       console.log("[ConfigService] No settings found in database. Initializing with default environment values...");
       const settingsToCreate = DEFAULT_SETTINGS_KEYS.map((item) => {
-        const val = process.env[item.key] || "placeholder";
+        const defaultVal = item.key === "PLATFORM_FEE_TYPE" ? "flat" : item.key === "PLATFORM_FEE_VALUE" ? "5" : "placeholder";
+        const val = process.env[item.key] || defaultVal;
         return {
           key: item.key,
           value: val,

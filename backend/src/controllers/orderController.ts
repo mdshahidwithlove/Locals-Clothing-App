@@ -7,6 +7,7 @@ import { validateUserRole, sendErrorResponse } from "../utils/validation";
 import { generateOrderNumber, calculateDeliveryFee, releaseInventory } from "../utils/orderUtils";
 import { notifyOrderPlaced } from "../utils/notificationUtils";
 import { getStoreLocation, getDeliveryLocation } from "../utils/locationUtils";
+import { getConfig } from "../services/configService";
 import z from "zod";
 import type { Types } from "mongoose";
 
@@ -69,8 +70,19 @@ async function createSingleStoreOrder(
   // Calculate delivery fee
   const deliveryFee = Math.round(calculateDeliveryFee(itemsTotal));
 
-  // Calculate total amount
-  const totalAmount = Math.round(itemsTotal + deliveryFee);
+  // Calculate dynamic platform fee
+  const feeType = getConfig("PLATFORM_FEE_TYPE", "flat");
+  const feeValueRaw = getConfig("PLATFORM_FEE_VALUE", "5");
+  const feeValue = parseFloat(feeValueRaw) || 0;
+  let platformFee = 0;
+  if (feeType === "percentage") {
+    platformFee = Math.round(itemsTotal * (feeValue / 100));
+  } else {
+    platformFee = Math.round(feeValue);
+  }
+
+  // Calculate total amount including platform fee
+  const totalAmount = Math.round(itemsTotal + deliveryFee + platformFee);
 
   // Generate unique order number
   const orderNumber = await generateOrderNumber(storeId);
@@ -106,6 +118,7 @@ async function createSingleStoreOrder(
     orderItems: validatedOrderItems,
     itemsTotal,
     deliveryFee,
+    platformFee,
     totalAmount,
     shippingAddress: shippingAddress.trim(),
     deliveryContactPhone: deliveryContactPhone.trim(),
@@ -303,8 +316,19 @@ async function createOrder(req: Request, res: Response) {
     // Calculate delivery fee (already returns whole number)
     const deliveryFee = Math.round(calculateDeliveryFee(itemsTotal));
 
+    // Calculate dynamic platform fee
+    const feeType = getConfig("PLATFORM_FEE_TYPE", "flat");
+    const feeValueRaw = getConfig("PLATFORM_FEE_VALUE", "5");
+    const feeValue = parseFloat(feeValueRaw) || 0;
+    let platformFee = 0;
+    if (feeType === "percentage") {
+      platformFee = Math.round(itemsTotal * (feeValue / 100));
+    } else {
+      platformFee = Math.round(feeValue);
+    }
+
     // Calculate total amount (ensure whole number)
-    const totalAmount = Math.round(itemsTotal + deliveryFee);
+    const totalAmount = Math.round(itemsTotal + deliveryFee + platformFee);
 
     // Generate unique order number
     const orderNumber = await generateOrderNumber(storeId);
@@ -343,6 +367,7 @@ async function createOrder(req: Request, res: Response) {
       orderItems: validatedOrderItems,
       itemsTotal,
       deliveryFee,
+      platformFee,
       totalAmount,
       shippingAddress: shippingAddress.trim(),
       deliveryContactPhone: deliveryContactPhone.trim(),

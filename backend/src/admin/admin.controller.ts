@@ -711,3 +711,16 @@ export async function updateStoreStatus(req: CustomRequest, res: Response): Prom
     });
   }
 }
+
+export async function getAdminNotifications(req: Request, res: Response): Promise<Response | void> {
+  try {
+    const NotificationModel = require('../Models/notificationModel').default;
+    const notifications = await NotificationModel.find({ recipientRole: 'Admin' })
+      .sort({ createdAt: -1 })
+      .limit(50);
+    res.status(200).json({ success: true, data: notifications });
+  } catch (error: any) {
+    console.error('Fetch admin notifications error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to fetch notifications' });
+  }
+}

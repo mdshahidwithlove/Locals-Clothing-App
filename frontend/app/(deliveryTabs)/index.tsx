@@ -108,7 +108,7 @@ export default function DeliveryHome() {
             colors={['#4CAF50', '#388E3C']}
             style={styles.statGradient}
           >
-            <Ionicons name="checkmark-circle" size={28} color="#FFFFFF" />
+            <Ionicons name="checkmark-circle" size={24} color="#FFFFFF" />
             <View style={styles.statContent}>
               <Text style={styles.statNumber}>{isLoading ? '...' : (stats.completed || 0)}</Text>
               <Text style={styles.statLabel}>Completed</Text>
@@ -116,28 +116,28 @@ export default function DeliveryHome() {
           </LinearGradient>
         </TouchableOpacity>
         
-        {/* <TouchableOpacity style={styles.statCard} activeOpacity={0.8} onPress={() => router.push('/(deliveryTabs)/delivery' as any)}>
-          <LinearGradient
-            colors={['#FF9800', '#F57C00']}
-            style={styles.statGradient}
-          >
-            <Ionicons name="star" size={28} color="#FFFFFF" />
-            <View style={styles.statContent}>
-              <Text style={styles.statNumber}>{isLoading ? '...' : stats.averageRating?.toFixed(1) || '0.0'}</Text>
-              <Text style={styles.statLabel}>Rating</Text>
-            </View>
-          </LinearGradient>
-        </TouchableOpacity> */}
-        
         <TouchableOpacity style={styles.statCard} activeOpacity={0.8} onPress={() => router.push('/(deliveryTabs)/delivery' as any)}>
           <LinearGradient
             colors={['#2196F3', '#1976D2']}
             style={styles.statGradient}
           >
-            <Ionicons name="bicycle" size={28} color="#FFFFFF" />
+            <Ionicons name="bicycle" size={24} color="#FFFFFF" />
             <View style={styles.statContent}>
               <Text style={styles.statNumber}>{isLoading ? '...' : (stats.pending || 0)}</Text>
               <Text style={styles.statLabel}>Active</Text>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.statCard} activeOpacity={0.8}>
+          <LinearGradient
+            colors={['#FF9800', '#F57C00']}
+            style={styles.statGradient}
+          >
+            <Ionicons name="wallet" size={24} color="#FFFFFF" />
+            <View style={styles.statContent}>
+              <Text style={styles.statNumber}>{isLoading ? '...' : `₹${Math.round(stats.totalEarnings || 0)}`}</Text>
+              <Text style={styles.statLabel}>Earned</Text>
             </View>
           </LinearGradient>
         </TouchableOpacity>
@@ -177,6 +177,28 @@ export default function DeliveryHome() {
         </View>
       </View>
 
+      {/* Settlement Summary Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Settlement & Cash Summary</Text>
+        <View style={styles.settlementCard}>
+          <View style={styles.settlementRow}>
+            <Text style={styles.settlementLabel}>Total Earnings (Delivery Fees)</Text>
+            <Text style={styles.settlementValue}>₹{Math.round(stats.totalEarnings || 0)}</Text>
+          </View>
+          <View style={styles.settlementRow}>
+            <Text style={styles.settlementLabel}>COD Cash In Hand (Unsubmitted)</Text>
+            <Text style={[styles.settlementValue, { color: '#E53935' }]}>₹{Math.round(stats.cashInHand || 0)}</Text>
+          </View>
+          <View style={[styles.settlementRow, styles.settlementTotalRow]}>
+            <Text style={styles.settlementTotalLabel}>Net Balance Owed to Us</Text>
+            <Text style={[styles.settlementTotalValue, { color: '#E53935' }]}>₹{Math.round(stats.netOwed || 0)}</Text>
+          </View>
+          <Text style={styles.settlementNotice}>
+            * Submit collected COD cash to stores or admin portal to clear your pending balances.
+          </Text>
+        </View>
+      </View>
+
       {/* Recent Activity */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Recent Activity</Text>
@@ -206,11 +228,16 @@ export default function DeliveryHome() {
                   <Text style={styles.activityTitle}>
                     Order #{d.order?.orderNumber || String(d.order?._id || '').slice(-8)}
                   </Text>
+                  <Text style={styles.activityTime} numberOfLines={1}>
+                    {d.order?.store?.storeName || 'Store'} ➔ {d.order?.shippingAddress ? (d.order.shippingAddress.split(',')[0] || '').slice(0, 18) : 'Customer'}
+                  </Text>
                   <Text style={styles.activityTime}>
                     {new Date(d.createdAt).toLocaleDateString()} • {new Date(d.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </Text>
                 </View>
-              {/* Removed delivery fee from recent activity */}
+                <Text style={styles.activityAmount}>
+                  +₹{Math.round(d.deliveryFee || 0)}
+                </Text>
               </TouchableOpacity>
             ))
           )}
@@ -482,5 +509,54 @@ const styles = StyleSheet.create({
     color: '#9E9E9E',
     marginTop: 6,
     textAlign: 'center',
+  },
+  settlementCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  settlementRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F5',
+  },
+  settlementLabel: {
+    fontSize: 14,
+    color: '#616161',
+    fontWeight: '500',
+  },
+  settlementValue: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  settlementTotalRow: {
+    borderBottomWidth: 0,
+    paddingTop: 14,
+    paddingBottom: 4,
+  },
+  settlementTotalLabel: {
+    fontSize: 15,
+    color: '#212121',
+    fontWeight: '700',
+  },
+  settlementTotalValue: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  settlementNotice: {
+    fontSize: 11,
+    color: '#9E9E9E',
+    marginTop: 10,
+    fontStyle: 'italic',
+    lineHeight: 14,
   },
 });

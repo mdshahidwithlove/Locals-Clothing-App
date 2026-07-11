@@ -2,6 +2,7 @@ import DeliveryModel from "../Models/deliveryModel";
 import OrderModel from "../Models/orderModel";
 import StoreModel from "../Models/storeModel";
 import UserModel from "../Models/userModel";
+import PaymentModel from "../Models/paymentModel";
 import { notifyOrderPickedUp, notifyOrderDelivered } from "../utils/notificationUtils";
 import { type IDelivery } from "../types/delivery";
 import type { Response, Request } from "express";
@@ -703,6 +704,26 @@ async function getDeliveryStats(req: Request, res: Response) {
       .filter((d: any) => d.order?.paymentMethod === 'Online')
       .reduce((sum: number, d: any) => sum + (d.deliveryFee || 0), 0);
 
+    // Calculate cash in hand (unsubmitted COD payments collected by this rider)
+    const cashInHandResult = await PaymentModel.aggregate([
+      {
+        $match: {
+          codCollectedBy: user._id,
+          paymentMethod: 'COD',
+          paymentStatus: 'Completed',
+          codSubmittedToStore: false
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          cashInHand: { $sum: '$amount' }
+        }
+      }
+    ]);
+    const cashInHand = Math.round(cashInHandResult[0]?.cashInHand || 0);
+    const netOwed = cashInHand;
+
     const stats = {
       totalDeliveries,
       pending: pendingDeliveries + acceptedDeliveries + pickedUpDeliveries, // All in-progress deliveries
@@ -710,7 +731,9 @@ async function getDeliveryStats(req: Request, res: Response) {
       cancelled: cancelledDeliveries,
       averageRating: ratingResult[0]?.averageRating || 0,
       totalEarnings: earningsResult[0]?.totalEarnings || 0,
-      onlinePaymentEarnings
+      onlinePaymentEarnings,
+      cashInHand,
+      netOwed
     };
 
     return res.status(200).json({

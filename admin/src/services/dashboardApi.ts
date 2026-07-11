@@ -142,3 +142,8 @@ export async function updateSettings(settings: { key: string; value: string }[])
   const res = await api.patch('/api/v1/admin/settings', { settings });
   return res.data;
 }
+
+export async function fetchAdminNotifications() {
+  const res = await api.get('/api/v1/admin/notifications');
+  return res.data.data;
+}

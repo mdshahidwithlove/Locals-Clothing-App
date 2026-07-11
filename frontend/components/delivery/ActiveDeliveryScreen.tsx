@@ -248,7 +248,7 @@ const ActiveDeliveryScreen: React.FC<ActiveDeliveryScreenProps> = ({ delivery, o
         {mapRegion && (
           <View style={styles.mapContainer}>
             <MapView
-              provider={PROVIDER_GOOGLE}
+              provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
               style={styles.map}
               initialRegion={mapRegion}
               showsUserLocation

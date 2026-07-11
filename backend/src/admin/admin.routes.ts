@@ -21,6 +21,7 @@ import {
   getVerificationDetail,
   updateVerificationStatus,
   updateStoreStatus,
+  getAdminNotifications,
 } from './admin.controller';
 import { getSettings, updateSettings } from './settingsController';
 import { isAdminAuthenticated } from './admin.middleware';
@@ -67,6 +68,9 @@ router.patch('/stores/:id/status', isAdminAuthenticated, updateStoreStatus);
 router.get('/verification/queue/:role', isAdminAuthenticated, getVerificationQueue);
 router.get('/verification/users/:userId', isAdminAuthenticated, getVerificationDetail);
 router.patch('/verification/users/:userId/status', isAdminAuthenticated, updateVerificationStatus);
+
+// Notifications
+router.get('/notifications', isAdminAuthenticated, getAdminNotifications);
 
 // Settings
 router.get('/settings', isAdminAuthenticated, getSettings);

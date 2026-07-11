@@ -61,22 +61,24 @@ export async function sendNotification(notificationData: NotificationData): Prom
     const notification = new NotificationModel(notificationData);
     await notification.save();
     
-    // Find recipient's push token from database
-    const user = await UserModel.findById(notificationData.recipient).select("pushToken");
-    if (user && user.pushToken) {
-      // Trigger real-time push notification via Expo
-      await sendExpoPushNotification(
-        user.pushToken,
-        notificationData.title,
-        notificationData.message,
-        {
-          type: notificationData.type,
-          orderId: notificationData.order ? notificationData.order.toString() : undefined,
-          ...notificationData.data
-        }
-      );
-    } else {
-      console.log(`[Notification] No active push token found for recipient ${notificationData.recipient}. Skipping push.`);
+    // Skip push notification check for Admin recipients
+    if ((notificationData.recipientRole as string) !== "Admin") {
+      const user = await UserModel.findById(notificationData.recipient).select("pushToken");
+      if (user && user.pushToken) {
+        // Trigger real-time push notification via Expo
+        await sendExpoPushNotification(
+          user.pushToken,
+          notificationData.title,
+          notificationData.message,
+          {
+            type: notificationData.type,
+            orderId: notificationData.order ? notificationData.order.toString() : undefined,
+            ...notificationData.data
+          }
+        );
+      } else {
+        console.log(`[Notification] No active push token found for recipient ${notificationData.recipient}. Skipping push.`);
+      }
     }
     
     console.log(`Notification sent to ${notificationData.recipient}: ${notificationData.title}`);
@@ -422,6 +424,62 @@ export async function notifyVerificationDecision(
       actionLabel: 'Upload documents',
       data: { note: note || '' },
     });
+  }
+}
+
+/**
+ * Notify admin of a user login event
+ */
+export async function notifyUserLogin(
+  userId: any,
+  userName: string,
+  userPhone: string,
+  userRole: string
+): Promise<void> {
+  try {
+    const AdminModel = require("../admin/admin.model").default;
+    const admins = await AdminModel.find({ isActive: true });
+    
+    for (const admin of admins) {
+      await sendNotification({
+        recipient: admin._id,
+        recipientRole: "Admin" as any,
+        type: "GENERAL",
+        title: "User Logged In",
+        message: `${userName || 'A user'} (${userPhone || 'No Phone'}) logged in as ${userRole}.`,
+        data: { userId: userId.toString(), role: userRole }
+      });
+    }
+  } catch (error) {
+    console.error("Failed to notify admins of user login:", error);
+  }
+}
+
+/**
+ * Notify admin of a new user registration event
+ */
+export async function notifyUserRegistration(
+  userId: any,
+  userName: string,
+  userPhone: string,
+  userRole: string
+): Promise<void> {
+  try {
+    const AdminModel = require("../admin/admin.model").default;
+    const admins = await AdminModel.find({ isActive: true });
+    
+    for (const admin of admins) {
+      await sendNotification({
+        recipient: admin._id,
+        recipientRole: "Admin" as any,
+        type: "GENERAL",
+        title: "New User Registered!",
+        message: `${userName || 'A new user'} (${userPhone || 'No Phone'}) registered as ${userRole}.`,
+        data: { userId: userId.toString(), role: userRole }
+      });
+    }
+  } catch (error) {
+    console.error("Failed to notify admins of user registration:", error);
   }
 }
 

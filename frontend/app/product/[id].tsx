@@ -936,7 +936,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   bottomSpacing: {
-    height: 20,
+    height: 120,
   },
   bottomBar: {
     position: 'absolute',

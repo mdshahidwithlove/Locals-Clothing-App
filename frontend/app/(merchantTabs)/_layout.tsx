@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { getPostAuthRoute } from '@/utils/authRouting';
 import { needsVerificationScreen } from '@/utils/verificationUtils';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 
 export default function MerchantTabLayout() {
   const { user, isLoading, refreshUserProfile } = useAuth();
@@ -45,6 +45,9 @@ export default function MerchantTabLayout() {
         tabBarStyle: {
           backgroundColor: Colors.navigationBackground,
           borderTopColor: Colors.border,
+          height: Platform.OS === 'ios' ? 88 : 60,
+          paddingBottom: Platform.OS === 'ios' ? 30 : 10,
+          paddingTop: 8,
         },
       }}>
       <Tabs.Screen

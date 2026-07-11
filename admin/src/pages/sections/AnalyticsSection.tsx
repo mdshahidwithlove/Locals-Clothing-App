@@ -6,6 +6,7 @@ import {
   Truck,
   TrendingUp,
   UserPlus,
+  Bell,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -22,7 +23,7 @@ import {
   Cell,
   Legend,
 } from 'recharts';
-import { fetchAnalyticsOverview } from '../../services/dashboardApi';
+import { fetchAnalyticsOverview, fetchAdminNotifications } from '../../services/dashboardApi';
 import PageShell from '@/components/admin/PageShell';
 import AdminPageHeader from '@/components/admin/AdminPageHeader';
 import StatCard from '@/components/admin/StatCard';
@@ -60,6 +61,7 @@ export default function AnalyticsSection() {
   const displayName = admin?.username?.trim() || 'there';
 
   const [data, setData] = useState<AnalyticsData | null>(null);
+  const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [trendView, setTrendView] = useState<TrendView>('daily');
@@ -74,8 +76,11 @@ export default function AnalyticsSection() {
   const load = () => {
     setLoading(true);
     setError('');
-    fetchAnalyticsOverview()
-      .then(setData)
+    Promise.all([fetchAnalyticsOverview(), fetchAdminNotifications()])
+      .then(([overviewData, notificationData]) => {
+        setData(overviewData);
+        setNotifications(notificationData || []);
+      })
       .catch(e =>
         setError(e?.response?.data?.message || e.message || 'Failed to load analytics'),
       )
@@ -405,6 +410,66 @@ export default function AnalyticsSection() {
                   />
                 </BarChart>
               </ResponsiveContainer>
+            </div>
+          )}
+        </PanelCard>
+      </div>
+
+      {/* Recent System Notifications / Activities */}
+      <div className="mt-8 mb-6">
+        <PanelCard
+          title="Recent system notifications & activities"
+          description="Real-time events, user logins, and registrations in the system"
+          action={
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
+              <Bell className="h-3.5 w-3.5 animate-bounce" />
+              Live Activities
+            </span>
+          }
+        >
+          {notifications.length === 0 ? (
+            <p className="py-12 text-center text-sm text-stone-500">No recent activities logged.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm text-stone-700">
+                <thead>
+                  <tr className="border-b border-stone-200 bg-stone-50 font-semibold text-stone-900">
+                    <th className="px-4 py-3">Event Type</th>
+                    <th className="px-4 py-3">Title</th>
+                    <th className="px-4 py-3">Description</th>
+                    <th className="px-4 py-3 text-right">Time</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {notifications.map((n, i) => (
+                    <tr key={n._id || i} className="hover:bg-stone-50/60 transition-colors">
+                      <td className="px-4 py-3.5 font-medium whitespace-nowrap">
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold ring-1 ring-inset ${
+                          n.title.toLowerCase().includes('login')
+                            ? 'bg-sky-50 text-sky-800 ring-sky-200/50'
+                            : n.title.toLowerCase().includes('register')
+                            ? 'bg-emerald-50 text-emerald-800 ring-emerald-200/50'
+                            : 'bg-stone-50 text-stone-700 ring-stone-200/60'
+                        }`}>
+                          {n.title.toLowerCase().includes('login') ? 'Login' : n.title.toLowerCase().includes('register') ? 'Register' : 'System'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5 font-semibold text-stone-900">{n.title}</td>
+                      <td className="px-4 py-3.5 text-stone-600">{n.message}</td>
+                      <td className="px-4 py-3.5 text-right text-stone-400 font-mono text-xs whitespace-nowrap">
+                        {new Date(n.createdAt).toLocaleTimeString('en-IN', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                        })} · {new Date(n.createdAt).toLocaleDateString('en-IN', {
+                          day: 'numeric',
+                          month: 'short',
+                        })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </PanelCard>

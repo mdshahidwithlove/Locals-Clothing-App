@@ -124,9 +124,12 @@ export default function HomeScreen() {
   // --- Store press handler ---
   const handleStorePress = useCallback(
     (store: Store) => {
-      router.push(`/store/${store._id}` as any);
+      router.push({
+        pathname: `/store/${store._id}`,
+        params: { filter: selectedFilter !== 'all' ? selectedFilter : undefined }
+      } as any);
     },
-    [router]
+    [router, selectedFilter]
   );
 
   const handleOrderPress = useCallback(() => {

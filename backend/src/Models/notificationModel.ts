@@ -2,7 +2,7 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface INotification extends Document {
   recipient: mongoose.Schema.Types.ObjectId;
-  recipientRole: "User" | "Merchant" | "Delivery";
+  recipientRole: "User" | "Merchant" | "Delivery" | "Admin";
   type: "ORDER_PLACED" | "ORDER_ACCEPTED" | "ORDER_REJECTED" | "ORDER_READY" | "ORDER_PICKED" | "ORDER_DELIVERED" | "ORDER_CANCELLED" | "PAYMENT_SUCCESS" | "PAYMENT_FAILED" | "DELIVERY_ASSIGNED" | "RATING_RECEIVED" | "VERIFICATION_APPROVED" | "VERIFICATION_REJECTED" | "GENERAL";
   title: string;
   message: string;
@@ -36,7 +36,7 @@ const notificationSchema: Schema = new Schema(
     },
     recipientRole: {
       type: String,
-      enum: ["User", "Merchant", "Delivery"],
+      enum: ["User", "Merchant", "Delivery", "Admin"],
       required: true
     },
     type: {

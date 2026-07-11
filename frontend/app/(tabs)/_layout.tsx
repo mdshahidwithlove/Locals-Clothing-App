@@ -3,7 +3,7 @@ import React, { useEffect, useCallback } from 'react';
 import { Colors } from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import { PendingStoreReviewsProvider, usePendingStoreReviewsContext } from '@/contexts/PendingStoreReviewsContext';
 import { getPostAuthRoute } from '@/utils/authRouting';
 
@@ -43,6 +43,9 @@ function TabLayoutContent() {
         tabBarStyle: {
           backgroundColor: Colors.navigationBackground,
           borderTopColor: Colors.border,
+          height: Platform.OS === 'ios' ? 88 : 60,
+          paddingBottom: Platform.OS === 'ios' ? 30 : 10,
+          paddingTop: 8,
         },
       }}>
       <Tabs.Screen

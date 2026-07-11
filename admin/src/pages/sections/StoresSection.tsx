@@ -106,6 +106,8 @@ export default function StoresSection() {
                     <th className="px-4 py-3 sm:px-6">Owner</th>
                     <SortHeader label="Orders" field="totalOrders" />
                     <SortHeader label="Revenue" field="totalRevenue" />
+                    <th className="px-4 py-3 sm:px-6">Net Earnings</th>
+                    <th className="px-4 py-3 sm:px-6">Net Balance</th>
                     <SortHeader label="Rating" field="rating" />
                     <SortHeader label="Return %" field="returnRate" />
                     <th className="px-4 py-3 sm:px-6">Status</th>
@@ -132,6 +134,25 @@ export default function StoresSection() {
                       </td>
                       <td className="px-4 py-3 font-bold tabular-nums sm:px-6">
                         {fmt(s.orderStats.totalRevenue)}
+                      </td>
+                      <td className="px-4 py-3 font-bold tabular-nums sm:px-6 text-stone-700">
+                        {fmt(s.orderStats.storeNetEarnings || 0)}
+                        <div className="text-[10px] text-stone-400 font-normal">
+                          Fee: {fmt(s.orderStats.totalPlatformFee || 0)}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 font-bold tabular-nums sm:px-6">
+                        {(s.orderStats.netBalance ?? 0) > 0 ? (
+                          <span className="rounded-md bg-red-50 px-2 py-1 text-red-700 text-xs font-bold ring-1 ring-inset ring-red-200/50">
+                            Owes: {fmt(s.orderStats.netBalance)}
+                          </span>
+                        ) : (s.orderStats.netBalance ?? 0) < 0 ? (
+                          <span className="rounded-md bg-emerald-50 px-2 py-1 text-emerald-700 text-xs font-bold ring-1 ring-inset ring-emerald-200/50">
+                            We Owe: {fmt(Math.abs(s.orderStats.netBalance))}
+                          </span>
+                        ) : (
+                          <span className="text-stone-400 text-xs font-semibold">Settled</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 sm:px-6">
                         {hasStoreReviews(s.rating?.totalReviews) ? (

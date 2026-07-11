@@ -352,6 +352,9 @@ export class AdminService {
             gmv: { $sum: '$totalAmount' },
             totalDeliveryFees: { $sum: '$deliveryFee' },
             orderCount: { $sum: 1 },
+            platformCommission: {
+              $sum: { $cond: [{ $gt: ['$platformFee', 0] }, '$platformFee', { $multiply: ['$totalAmount', 0.05] }] }
+            }
           },
         },
       ]),
@@ -385,6 +388,7 @@ export class AdminService {
     const gmv = gmvResult[0]?.gmv || 0;
     const deliveryFees = gmvResult[0]?.totalDeliveryFees || 0;
     const orderCount = gmvResult[0]?.orderCount || 0;
+    const platformCommission = Math.round(gmvResult[0]?.platformCommission || 0);
 
     // Format payment status into named fields
     const statusMap: Record<string, { count: number; total: number }> = {};
@@ -401,7 +405,7 @@ export class AdminService {
       gmv,
       totalDeliveryFees: deliveryFees,
       totalOrders: orderCount,
-      platformCommission: gmv * 0.05, // 5% platform commission estimate
+      platformCommission,
       successPayments: statusMap['Completed'] || { count: 0, total: 0 },
       failedPayments: statusMap['Failed'] || { count: 0, total: 0 },
       pendingPayments: statusMap['Pending'] || { count: 0, total: 0 },
@@ -740,37 +744,87 @@ export class AdminService {
 
     // Get delivery stats for each partner
     const partnerIds = partners.map((p: any) => p._id);
-    const deliveryStats = await DeliveryModel.aggregate([
-      { $match: { deliveryPerson: { $in: partnerIds } } },
-      {
-        $group: {
-          _id: '$deliveryPerson',
-          totalDeliveries: { $sum: 1 },
-          completedDeliveries: {
-            $sum: { $cond: [{ $eq: ['$status', 'Delivered'] }, 1, 0] },
+    const [deliveryStats, riderStats, codStats] = await Promise.all([
+      DeliveryModel.aggregate([
+        { $match: { deliveryPerson: { $in: partnerIds } } },
+        {
+          $group: {
+            _id: '$deliveryPerson',
+            totalDeliveries: { $sum: 1 },
+            completedDeliveries: {
+              $sum: { $cond: [{ $eq: ['$status', 'Delivered'] }, 1, 0] },
+            },
+            avgRating: { $avg: '$rating' },
           },
-          avgRating: { $avg: '$rating' },
         },
-      },
+      ]),
+      OrderModel.aggregate([
+        { $match: { deliveryPerson: { $in: partnerIds }, status: 'Delivered' } },
+        {
+          $group: {
+            _id: '$deliveryPerson',
+            totalEarnings: { $sum: '$deliveryFee' },
+          }
+        }
+      ]),
+      PaymentModel.aggregate([
+        {
+          $match: {
+            codCollectedBy: { $in: partnerIds },
+            paymentMethod: 'COD',
+            paymentStatus: 'Completed',
+            codSubmittedToStore: false
+          }
+        },
+        {
+          $group: {
+            _id: '$codCollectedBy',
+            cashInHand: { $sum: '$amount' }
+          }
+        }
+      ])
     ]);
 
     const statsMap: Record<string, any> = {};
-    deliveryStats.forEach((s: any) => {
-      statsMap[s._id.toString()] = {
-        totalDeliveries: s.totalDeliveries,
-        completedDeliveries: s.completedDeliveries,
-        avgRating: s.avgRating ? Math.round(s.avgRating * 10) / 10 : null,
+    partnerIds.forEach((id: any) => {
+      statsMap[id.toString()] = {
+        totalDeliveries: 0,
+        completedDeliveries: 0,
+        avgRating: null,
+        totalEarnings: 0,
+        cashInHand: 0,
+        netOwed: 0,
       };
+    });
+
+    deliveryStats.forEach((s: any) => {
+      const id = s._id.toString();
+      if (statsMap[id]) {
+        statsMap[id].totalDeliveries = s.totalDeliveries;
+        statsMap[id].completedDeliveries = s.completedDeliveries;
+        statsMap[id].avgRating = s.avgRating ? Math.round(s.avgRating * 10) / 10 : null;
+      }
+    });
+
+    riderStats.forEach((s: any) => {
+      const id = s._id.toString();
+      if (statsMap[id]) {
+        statsMap[id].totalEarnings = Math.round(s.totalEarnings);
+      }
+    });
+
+    codStats.forEach((s: any) => {
+      const id = s._id.toString();
+      if (statsMap[id]) {
+        statsMap[id].cashInHand = Math.round(s.cashInHand);
+        statsMap[id].netOwed = Math.round(s.cashInHand); // equivalent to cashInHand
+      }
     });
 
     const enrichedPartners = partners.map((p: any) => ({
       ...p,
       verificationStatus: resolveVerificationStatus(p),
-      deliveryStats: statsMap[p._id.toString()] || {
-        totalDeliveries: 0,
-        completedDeliveries: 0,
-        avgRating: null,
-      },
+      deliveryStats: statsMap[p._id.toString()],
     }));
 
     return {
@@ -932,14 +986,66 @@ export class AdminService {
 
     const rows = await StoreModel.aggregate(pipeline);
 
-    const stores = rows.map((s: any) => ({
-      _id: s._id,
-      storeName: s.storeName,
-      owner: s.owner || null,
-      rating: s.rating,
-      isActive: s.isActive,
-      createdAt: s.createdAt,
-      orderStats: s.orderStats,
+    const stores = await Promise.all(rows.map(async (s: any) => {
+      const sid = s._id;
+      const [finAgg, paymentAgg] = await Promise.all([
+        OrderModel.aggregate([
+          { $match: { store: sid, status: 'Delivered' } },
+          {
+            $group: {
+              _id: null,
+              totalDeliveredSales: { $sum: '$itemsTotal' },
+              totalPlatformFee: {
+                $sum: { $cond: [{ $gt: ['$platformFee', 0] }, '$platformFee', { $multiply: ['$itemsTotal', 0.05] }] }
+              },
+              onlineSales: {
+                $sum: { $cond: [{ $eq: ['$paymentMethod', 'Online'] }, '$itemsTotal', 0] }
+              }
+            }
+          }
+        ]),
+        PaymentModel.aggregate([
+          {
+            $match: {
+              store: sid,
+              paymentMethod: 'COD',
+              paymentStatus: 'Completed',
+              codSubmittedToStore: true
+            }
+          },
+          {
+            $group: {
+              _id: null,
+              codSubmittedTotal: { $sum: '$amount' }
+            }
+          }
+        ])
+      ]);
+
+      const fin = finAgg[0] || { totalDeliveredSales: 0, totalPlatformFee: 0, onlineSales: 0 };
+      const pay = paymentAgg[0] || { codSubmittedTotal: 0 };
+
+      const totalPlatformFee = Math.round(fin.totalPlatformFee);
+      const storeNetEarnings = Math.round(fin.totalDeliveredSales - totalPlatformFee);
+      const codCollectedAndHandedOver = Math.round(pay.codSubmittedTotal);
+      const netBalance = Math.round(codCollectedAndHandedOver - storeNetEarnings);
+
+      return {
+        _id: s._id,
+        storeName: s.storeName,
+        owner: s.owner || null,
+        rating: s.rating,
+        isActive: s.isActive,
+        createdAt: s.createdAt,
+        orderStats: {
+          ...s.orderStats,
+          totalPlatformFee,
+          storeNetEarnings,
+          codCollectedAndHandedOver,
+          onlineSales: Math.round(fin.onlineSales),
+          netBalance,
+        },
+      };
     }));
 
     return {
@@ -1069,6 +1175,48 @@ export class AdminService {
       orderStatusBreakdown[s._id] = s.count;
     });
 
+    const [finAgg, paymentAgg] = await Promise.all([
+      OrderModel.aggregate([
+        { $match: { store: sid, status: 'Delivered' } },
+        {
+          $group: {
+            _id: null,
+            totalDeliveredSales: { $sum: '$itemsTotal' },
+            totalPlatformFee: {
+              $sum: { $cond: [{ $gt: ['$platformFee', 0] }, '$platformFee', { $multiply: ['$itemsTotal', 0.05] }] }
+            },
+            onlineSales: {
+              $sum: { $cond: [{ $eq: ['$paymentMethod', 'Online'] }, '$itemsTotal', 0] }
+            }
+          }
+        }
+      ]),
+      PaymentModel.aggregate([
+        {
+          $match: {
+            store: sid,
+            paymentMethod: 'COD',
+            paymentStatus: 'Completed',
+            codSubmittedToStore: true
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            codSubmittedTotal: { $sum: '$amount' }
+          }
+        }
+      ])
+    ]);
+
+    const fin = finAgg[0] || { totalDeliveredSales: 0, totalPlatformFee: 0, onlineSales: 0 };
+    const pay = paymentAgg[0] || { codSubmittedTotal: 0 };
+
+    const totalPlatformFee = Math.round(fin.totalPlatformFee);
+    const storeNetEarnings = Math.round(fin.totalDeliveredSales - totalPlatformFee);
+    const codCollectedAndHandedOver = Math.round(pay.codSubmittedTotal);
+    const netBalance = Math.round(codCollectedAndHandedOver - storeNetEarnings);
+
     const s = store as any;
 
     return {
@@ -1097,6 +1245,11 @@ export class AdminService {
         deliveredOrders: raw?.deliveredOrders ?? 0,
         cancelledOrders,
         returnRate,
+        totalPlatformFee,
+        storeNetEarnings,
+        codCollectedAndHandedOver,
+        onlineSales: Math.round(fin.onlineSales),
+        netBalance,
       },
       orderStatusBreakdown,
       ordersTrendDaily: ordersTrend.map((d: any) => ({

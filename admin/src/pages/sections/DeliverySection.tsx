@@ -22,6 +22,7 @@ import PaginationBar from '@/components/admin/PaginationBar';
 import { cn } from '@/lib/utils';
 
 const PIE_COLORS = ['#c9a227', '#15803d', '#0369a1', '#a21caf', '#c2410c', '#57534e'];
+const fmt = (v: number) => '₹' + Math.round(v).toLocaleString('en-IN');
 
 function StatusDot({ status }: { status: 'online' | 'busy' | 'offline' }) {
   const color =
@@ -236,6 +237,8 @@ export default function DeliverySection() {
                       <th className="px-4 py-3 sm:px-6">Current order</th>
                       <th className="px-4 py-3 sm:px-6">Deliveries</th>
                       <th className="px-4 py-3 sm:px-6">Completed</th>
+                      <th className="px-4 py-3 sm:px-6">Earnings</th>
+                      <th className="px-4 py-3 sm:px-6">Cash In Hand</th>
                       <th className="px-4 py-3 sm:px-6">Rating</th>
                       <th className="px-4 py-3 sm:px-6">Verification</th>
                       <th className="px-4 py-3 sm:px-6">Joined</th>
@@ -265,6 +268,12 @@ export default function DeliverySection() {
                         </td>
                         <td className="px-4 py-3 font-semibold text-emerald-700 tabular-nums sm:px-6">
                           {p.deliveryStats?.completedDeliveries || 0}
+                        </td>
+                        <td className="px-4 py-3 font-bold text-stone-850 tabular-nums sm:px-6">
+                          {fmt(p.deliveryStats?.totalEarnings || 0)}
+                        </td>
+                        <td className="px-4 py-3 font-bold text-red-700 tabular-nums sm:px-6">
+                          {fmt(p.deliveryStats?.cashInHand || 0)}
                         </td>
                         <td className="px-4 py-3 font-semibold text-amber-900 sm:px-6">
                           {p.deliveryStats?.avgRating

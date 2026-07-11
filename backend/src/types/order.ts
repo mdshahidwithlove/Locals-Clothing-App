@@ -23,6 +23,7 @@ export interface IOrder extends Document {
   deliveryContactPhone: string;
   itemsTotal: number;
   deliveryFee: number;
+  platformFee?: number;
   totalAmount: number;
   orderDate: Date;
   status: "Pending" | "Accepted" | "Rejected" | "Processing" | "ReadyForPickup" | "Assigned" | "PickedUp" | "OnTheWay" | "Shipped" | "Delivered" | "Cancelled";

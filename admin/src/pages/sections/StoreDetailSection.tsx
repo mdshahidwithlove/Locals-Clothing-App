@@ -303,6 +303,63 @@ export default function StoreDetailSection() {
         </div>
       </div>
 
+      {/* Financial Settlement Summary */}
+      <div className="mt-8">
+        <PanelCard
+          title="Financial Settlement Summary"
+          description="Detailed breakdown of store sales, platform fees, COD cash collections, and outstanding settlement balance."
+        >
+          <div className="grid gap-6 md:grid-cols-4 mt-4">
+            <div className="rounded-xl bg-stone-50 p-4 border border-stone-200/50">
+              <span className="text-xs font-semibold uppercase text-stone-500">Gross Sales (Delivered)</span>
+              <p className="text-xl font-bold text-stone-900 mt-1">{fmt(orderStats.totalRevenue)}</p>
+              <span className="text-[10px] text-stone-400">Total item sales from delivered orders</span>
+            </div>
+            
+            <div className="rounded-xl bg-stone-50 p-4 border border-stone-200/50">
+              <span className="text-xs font-semibold uppercase text-stone-500">Platform Fees Charged</span>
+              <p className="text-xl font-bold text-red-700 mt-1">{fmt(orderStats.totalPlatformFee || 0)}</p>
+              <span className="text-[10px] text-stone-400">Commission collected by platform</span>
+            </div>
+
+            <div className="rounded-xl bg-stone-50 p-4 border border-stone-200/50">
+              <span className="text-xs font-semibold uppercase text-stone-500">Store Net Earnings</span>
+              <p className="text-xl font-bold text-emerald-800 mt-1">{fmt(orderStats.storeNetEarnings || 0)}</p>
+              <span className="text-[10px] text-stone-400">Gross Sales - Platform Fees</span>
+            </div>
+
+            <div className="rounded-xl bg-stone-50 p-4 border border-stone-200/50">
+              <span className="text-xs font-semibold uppercase text-stone-500">COD Cash Handed Over</span>
+              <p className="text-xl font-bold text-stone-700 mt-1">{fmt(orderStats.codCollectedAndHandedOver || 0)}</p>
+              <span className="text-[10px] text-stone-400">COD collected cash submitted to store</span>
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-col md:flex-row md:items-center justify-between border-t border-stone-200/80 pt-6">
+            <div>
+              <span className="text-sm font-semibold text-stone-600">Online Sales (Settled by Platform)</span>
+              <p className="text-lg font-bold text-stone-800 mt-0.5">{fmt(orderStats.onlineSales || 0)}</p>
+            </div>
+            <div className="mt-4 md:mt-0 flex items-center gap-4">
+              <span className="text-sm font-bold text-stone-700">Settlement Balance:</span>
+              {(orderStats.netBalance ?? 0) > 0 ? (
+                <span className="rounded-xl bg-red-100 border border-red-200 px-4 py-2 text-red-800 text-lg font-bold">
+                  Store owes Platform: {fmt(orderStats.netBalance)}
+                </span>
+              ) : (orderStats.netBalance ?? 0) < 0 ? (
+                <span className="rounded-xl bg-emerald-100 border border-emerald-200 px-4 py-2 text-emerald-800 text-lg font-bold">
+                  Platform owes Store: {fmt(Math.abs(orderStats.netBalance))}
+                </span>
+              ) : (
+                <span className="rounded-xl bg-stone-100 border border-stone-200 px-4 py-2 text-stone-600 text-lg font-bold">
+                  Fully Settled (₹0)
+                </span>
+              )}
+            </div>
+          </div>
+        </PanelCard>
+      </div>
+
       <div className="mt-8">
         <PanelCard
           title="Product returns"
