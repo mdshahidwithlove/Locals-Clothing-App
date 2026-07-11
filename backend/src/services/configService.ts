@@ -19,20 +19,20 @@ const DEFAULT_SETTINGS_KEYS = [
  */
 export async function loadConfigCache(): Promise<void> {
   try {
-    const count = await Settings.countDocuments({});
-    if (count === 0) {
-      console.log("[ConfigService] No settings found in database. Initializing with default environment values...");
-      const settingsToCreate = DEFAULT_SETTINGS_KEYS.map((item) => {
+    // Check and create missing default settings individually
+    for (const item of DEFAULT_SETTINGS_KEYS) {
+      const exists = await Settings.findOne({ key: item.key });
+      if (!exists) {
         const defaultVal = item.key === "PLATFORM_FEE_TYPE" ? "flat" : item.key === "PLATFORM_FEE_VALUE" ? "5" : "placeholder";
         const val = process.env[item.key] || defaultVal;
-        return {
+        await Settings.create({
           key: item.key,
           value: val,
           description: item.description,
           isEncrypted: item.key.includes("SECRET") || item.key.includes("KEY") || item.key.includes("TOKEN")
-        };
-      });
-      await Settings.insertMany(settingsToCreate);
+        });
+        console.log(`[ConfigService] Initialized missing default setting: ${item.key}`);
+      }
     }
 
     const allSettings = await Settings.find({});
