@@ -283,9 +283,14 @@ export class AdminService {
         },
         { $sort: { _id: 1 } },
       ]),
-      // Category-wise sales from order items
+      // Category-wise sales from order items (last 30 days only for high performance)
       OrderModel.aggregate([
-        { $match: { status: { $nin: ['Cancelled', 'Rejected'] } } },
+        { 
+          $match: { 
+            status: { $nin: ['Cancelled', 'Rejected'] },
+            createdAt: { $gte: thirtyDaysAgo }
+          } 
+        },
         { $unwind: '$orderItems' },
         {
           $lookup: {
@@ -985,45 +990,61 @@ export class AdminService {
     ];
 
     const rows = await StoreModel.aggregate(pipeline);
+    const storeIds = rows.map((s: any) => s._id);
 
-    const stores = await Promise.all(rows.map(async (s: any) => {
-      const sid = s._id;
-      const [finAgg, paymentAgg] = await Promise.all([
-        OrderModel.aggregate([
-          { $match: { store: sid, status: 'Delivered' } },
-          {
-            $group: {
-              _id: null,
-              totalDeliveredSales: { $sum: '$itemsTotal' },
-              totalPlatformFee: {
-                $sum: { $cond: [{ $gt: ['$platformFee', 0] }, '$platformFee', { $multiply: ['$itemsTotal', 0.05] }] }
-              },
-              onlineSales: {
-                $sum: { $cond: [{ $eq: ['$paymentMethod', 'Online'] }, '$itemsTotal', 0] }
-              }
+    const [allFinAgg, allPaymentAgg] = await Promise.all([
+      OrderModel.aggregate([
+        { $match: { store: { $in: storeIds }, status: 'Delivered' } },
+        {
+          $group: {
+            _id: '$store',
+            totalDeliveredSales: { $sum: '$itemsTotal' },
+            totalPlatformFee: {
+              $sum: { $cond: [{ $gt: ['$platformFee', 0] }, '$platformFee', { $multiply: ['$itemsTotal', 0.05] }] }
+            },
+            onlineSales: {
+              $sum: { $cond: [{ $eq: ['$paymentMethod', 'Online'] }, '$itemsTotal', 0] }
             }
           }
-        ]),
-        PaymentModel.aggregate([
-          {
-            $match: {
-              store: sid,
-              paymentMethod: 'COD',
-              paymentStatus: 'Completed',
-              codSubmittedToStore: true
-            }
-          },
-          {
-            $group: {
-              _id: null,
-              codSubmittedTotal: { $sum: '$amount' }
-            }
+        }
+      ]),
+      PaymentModel.aggregate([
+        {
+          $match: {
+            store: { $in: storeIds },
+            paymentMethod: 'COD',
+            paymentStatus: 'Completed',
+            codSubmittedToStore: true
           }
-        ])
-      ]);
+        },
+        {
+          $group: {
+            _id: '$store',
+            codSubmittedTotal: { $sum: '$amount' }
+          }
+        }
+      ])
+    ]);
 
-      const fin = finAgg[0] || { totalDeliveredSales: 0, totalPlatformFee: 0, onlineSales: 0 };
-      const pay = paymentAgg[0] || { codSubmittedTotal: 0 };
+    const finMap: Record<string, any> = {};
+    const paymentMap: Record<string, any> = {};
+
+    allFinAgg.forEach((f: any) => {
+      if (f._id) {
+        finMap[f._id.toString()] = f;
+      }
+    });
+
+    allPaymentAgg.forEach((p: any) => {
+      if (p._id) {
+        paymentMap[p._id.toString()] = p;
+      }
+    });
+
+    const stores = rows.map((s: any) => {
+      const sidStr = s._id.toString();
+      const fin = finMap[sidStr] || { totalDeliveredSales: 0, totalPlatformFee: 0, onlineSales: 0 };
+      const pay = paymentMap[sidStr] || { codSubmittedTotal: 0 };
 
       const totalPlatformFee = Math.round(fin.totalPlatformFee);
       const storeNetEarnings = Math.round(fin.totalDeliveredSales - totalPlatformFee);
@@ -1046,7 +1067,7 @@ export class AdminService {
           netBalance,
         },
       };
-    }));
+    });
 
     return {
       stores,
