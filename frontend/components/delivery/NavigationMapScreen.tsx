@@ -9,7 +9,7 @@ import {
   Dimensions,
   Platform,
 } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE, UrlTile } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -536,7 +536,15 @@ const NavigationMapScreen: React.FC = () => {
             longitudeDelta: region.longitudeDelta,
           });
         }}
+        mapType={Platform.OS === 'android' ? 'none' : 'standard'}
       >
+        {Platform.OS === 'android' && (
+          <UrlTile
+            urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+            maximumZ={19}
+            tileSize={256}
+          />
+        )}
         {/* Current Location Marker */}
         {currentLocation && (
           <Marker

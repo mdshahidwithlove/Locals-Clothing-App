@@ -86,6 +86,68 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setupNotifications();
   }, [user, authToken]);
 
+  // Poll for new notifications from database as a fallback/robust in-app alert system
+  useEffect(() => {
+    if (!user || !authToken) return;
+
+    const seenNotificationIds = new Set<string>();
+
+    const fetchNotifications = async () => {
+      try {
+        const response = await apiClient.get('/api/v1/user/notifications?limit=10', {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        });
+        
+        if (response.data?.success) {
+          const fetchedNotifications = response.data.notifications || [];
+          
+          // Find the first unread notification that we haven't seen in this session
+          const newUnread = fetchedNotifications.find((n: any) => !n.isRead && !seenNotificationIds.has(n._id));
+          
+          if (newUnread) {
+            seenNotificationIds.add(newUnread._id);
+            
+            // Trigger a native local notification using expo-notifications
+            await Notifications.scheduleNotificationAsync({
+              content: {
+                title: newUnread.title,
+                body: newUnread.message,
+                data: {
+                  orderId: newUnread.order,
+                  type: newUnread.type,
+                },
+                sound: true,
+              },
+              trigger: null,
+            });
+
+            // Mark it as read on the backend
+            await apiClient.put(
+              `/api/v1/user/notifications/${newUnread._id}/read`,
+              {},
+              {
+                headers: {
+                  Authorization: `Bearer ${authToken}`,
+                },
+              }
+            );
+          }
+        }
+      } catch (error) {
+        console.error('Error polling notifications:', error);
+      }
+    };
+
+    // Initial check
+    fetchNotifications();
+
+    // Poll every 10 seconds
+    const interval = setInterval(fetchNotifications, 10000);
+    return () => clearInterval(interval);
+  }, [user, authToken]);
+
   // Set up notification event listeners
   useEffect(() => {
     // Listener for foreground notifications

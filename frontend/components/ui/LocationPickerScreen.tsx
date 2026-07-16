@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Platform, Animated, Alert, TextInput } from 'react-native';
-import MapView, { PROVIDER_GOOGLE, Region } from 'react-native-maps';
+import MapView, { PROVIDER_GOOGLE, Region, UrlTile } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { useLocation } from '@/contexts/LocationContext';
@@ -191,7 +191,16 @@ const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
             zoomControlEnabled={Platform.OS === 'android'}
             showsUserLocation={true}
             showsMyLocationButton={false}
-          />
+            mapType={Platform.OS === 'android' ? 'none' : 'standard'}
+          >
+            {Platform.OS === 'android' && (
+              <UrlTile
+                urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                maximumZ={19}
+                tileSize={256}
+              />
+            )}
+          </MapView>
           
           {/* Center Pin - Sharp and Precise */}
           <View pointerEvents="none" style={styles.centerPinContainer}>

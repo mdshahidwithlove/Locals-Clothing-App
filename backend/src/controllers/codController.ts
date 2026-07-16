@@ -223,3 +223,49 @@ export async function getCodSummary(req: Request, res: Response) {
   }
 }
 
+/**
+ * Settle unsubmitted COD cash online
+ */
+export async function settleCodOnline(req: Request, res: Response) {
+  try {
+    const user = (req as any).user;
+
+    if (user.role !== "Delivery") {
+      return sendErrorResponse(res, 403, "Only delivery persons can settle COD online");
+    }
+
+    // Get collected but not submitted COD payments
+    const payments = await PaymentModel.find({
+      codCollectedBy: user._id,
+      codSubmittedToStore: false,
+      paymentMethod: "COD",
+      paymentStatus: "Completed"
+    });
+
+    if (payments.length === 0) {
+      return sendErrorResponse(res, 400, "No pending COD cash to settle");
+    }
+
+    const totalSettledAmount = payments.reduce((sum, p) => sum + p.amount, 0);
+
+    // Update all payments to submitted/settled
+    for (const payment of payments) {
+      payment.codSubmittedToStore = true;
+      payment.codSubmittedAt = new Date();
+      payment.notes = (payment.notes ? payment.notes + " | " : "") + "Settled online by Rider";
+      await payment.save();
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Successfully settled ₹${totalSettledAmount} online`,
+      count: payments.length,
+      amount: totalSettledAmount
+    });
+
+  } catch (error) {
+    console.error("Error settling COD online:", error);
+    return sendErrorResponse(res, 500, "Internal server error");
+  }
+}
+

@@ -22,6 +22,8 @@ import {
   updateVerificationStatus,
   updateStoreStatus,
   getAdminNotifications,
+  updateStoreCommission,
+  settleDeliveryPartnerCash,
 } from './admin.controller';
 import { getSettings, updateSettings } from './settingsController';
 import { isAdminAuthenticated } from './admin.middleware';
@@ -63,6 +65,10 @@ router.get('/delivery-partners/stats', isAdminAuthenticated, getDeliveryStats);
 router.get('/stores/performance', isAdminAuthenticated, getStorePerformance);
 router.get('/stores/:id/detail', isAdminAuthenticated, getAdminStoreDetail);
 router.patch('/stores/:id/status', isAdminAuthenticated, updateStoreStatus);
+router.patch('/stores/:id/commission', isAdminAuthenticated, updateStoreCommission);
+
+// Delivery partners cash settlement route
+router.post('/delivery-partners/:id/settle-cash', isAdminAuthenticated, settleDeliveryPartnerCash);
 
 // Verification (merchants & delivery partners)
 router.get('/verification/queue/:role', isAdminAuthenticated, getVerificationQueue);

@@ -2,7 +2,8 @@ import express from "express";
 import {
   markCodCollected,
   submitCodToStore,
-  getCodSummary
+  getCodSummary,
+  settleCodOnline
 } from "../controllers/codController";
 import { isAuthenticated } from "../middleware/auth";
 import { requireRole } from "../middleware/roleAuth";
@@ -21,6 +22,9 @@ router.post("/submit", submitCodToStore);
 
 // Get COD collection summary
 router.get("/summary", getCodSummary);
+
+// Settle COD cash online
+router.post("/settle-online", settleCodOnline);
 
 export default router;
 

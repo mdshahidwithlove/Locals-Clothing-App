@@ -336,3 +336,242 @@ export async function getMerchantOrders(req: Request, res: Response) {
   }
 }
 
+/**
+ * Get merchant analytics (sales, profit, rider cash status, best sellers, trending products)
+ */
+export async function getMerchantAnalytics(req: Request, res: Response) {
+  try {
+    const user = (req as any).user;
+
+    if (user.role !== "Merchant") {
+      return sendErrorResponse(res, 403, "Only merchants can view analytics");
+    }
+
+    // Find store
+    const store = await StoreModel.findOne({ merchantId: user._id });
+    if (!store) {
+      return sendErrorResponse(res, 404, "Store not found for this merchant");
+    }
+
+    // 1. Financials: match delivered orders for this store
+    const financialsResult = await OrderModel.aggregate([
+      { $match: { store: store._id, status: "Delivered" } },
+      {
+        $group: {
+          _id: null,
+          totalSales: { $sum: "$itemsTotal" },
+          totalOrders: { $sum: 1 },
+          platformFees: { $sum: "$platformFee" },
+          netEarnings: { $sum: { $subtract: ["$itemsTotal", "$platformFee"] } }
+        }
+      }
+    ]);
+
+    const financials = financialsResult[0] || {
+      totalSales: 0,
+      totalOrders: 0,
+      platformFees: 0,
+      netEarnings: 0
+    };
+
+    // 2. COD Cash: unsubmitted and submitted amounts
+    const codStatsResult = await PaymentModel.aggregate([
+      { $match: { store: store._id, paymentMethod: "COD", paymentStatus: "Completed" } },
+      {
+        $group: {
+          _id: "$codSubmittedToStore",
+          totalAmount: { $sum: "$amount" }
+        }
+      }
+    ]);
+
+    let unsubmittedCodAmount = 0;
+    let submittedCodAmount = 0;
+
+    codStatsResult.forEach(item => {
+      if (item._id === true) {
+        submittedCodAmount = item.totalAmount;
+      } else {
+        unsubmittedCodAmount = item.totalAmount;
+      }
+    });
+
+    // 3. Rider Cash holding details for this store
+    const riderCashHoldings = await PaymentModel.aggregate([
+      {
+        $match: {
+          store: store._id,
+          paymentMethod: "COD",
+          paymentStatus: "Completed",
+          codSubmittedToStore: false,
+          codCollectedBy: { $exists: true, $ne: null }
+        }
+      },
+      {
+        $group: {
+          _id: "$codCollectedBy",
+          cashAmount: { $sum: "$amount" },
+          payments: {
+            $push: {
+              paymentId: "$_id",
+              order: "$order",
+              amount: "$amount",
+              collectedAt: "$codCollectedAt"
+            }
+          }
+        }
+      }
+    ]);
+
+    // Populate rider details manually
+    const populatedRiderHoldings = [];
+    const UserModel = require("../Models/userModel").default;
+    const OrderModelForPop = require("../Models/orderModel").default;
+
+    for (const riderGroup of riderCashHoldings) {
+      const rider = await UserModel.findById(riderGroup._id).select("name phone").lean();
+      
+      const paymentsWithOrders = [];
+      for (const p of riderGroup.payments) {
+        const order = await OrderModelForPop.findById(p.order).select("orderNumber").lean();
+        paymentsWithOrders.push({
+          ...p,
+          orderNumber: order?.orderNumber || p.order.toString().slice(-6)
+        });
+      }
+
+      populatedRiderHoldings.push({
+        riderId: riderGroup._id,
+        riderName: rider?.name || "Unknown Rider",
+        riderPhone: rider?.phone || "—",
+        cashAmount: riderGroup.cashAmount,
+        payments: paymentsWithOrders
+      });
+    }
+
+    // 4. Best Seller products (top 5 by quantity sold)
+    const bestSellersResult = await OrderModel.aggregate([
+      { $match: { store: store._id, status: "Delivered" } },
+      { $unwind: "$orderItems" },
+      {
+        $group: {
+          _id: "$orderItems.product",
+          totalSold: { $sum: "$orderItems.quantity" },
+          revenue: { $sum: { $multiply: ["$orderItems.price", "$orderItems.quantity"] } }
+        }
+      },
+      { $sort: { totalSold: -1 } },
+      { $limit: 5 }
+    ]);
+
+    // Populate product details manually
+    const ProductModel = require("../Models/productModel").default;
+    const bestSellers = [];
+    for (const item of bestSellersResult) {
+      const product = await ProductModel.findById(item._id).select("name images price category").lean();
+      if (product) {
+        bestSellers.push({
+          ...item,
+          product
+        });
+      }
+    }
+
+    // 5. Trending products (top 5 by quantity sold in last 14 days)
+    const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+    const trendingResult = await OrderModel.aggregate([
+      { $match: { store: store._id, status: "Delivered", createdAt: { $gte: fourteenDaysAgo } } },
+      { $unwind: "$orderItems" },
+      {
+        $group: {
+          _id: "$orderItems.product",
+          recentSold: { $sum: "$orderItems.quantity" }
+        }
+      },
+      { $sort: { recentSold: -1 } },
+      { $limit: 5 }
+    ]);
+
+    const trending = [];
+    for (const item of trendingResult) {
+      const product = await ProductModel.findById(item._id).select("name images price category").lean();
+      if (product) {
+        trending.push({
+          ...item,
+          product
+        });
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Merchant analytics retrieved successfully",
+      analytics: {
+        financials,
+        codSummary: {
+          unsubmittedCodAmount,
+          submittedCodAmount,
+          riderHoldings: populatedRiderHoldings
+        },
+        bestSellers,
+        trending
+      }
+    });
+
+  } catch (error) {
+    console.error("Error getting merchant analytics:", error);
+    return sendErrorResponse(res, 500, "Internal server error");
+  }
+}
+
+/**
+ * Verify receipt of COD cash from rider (merchant marks payment as submitted/received)
+ */
+export async function verifyCodReceipt(req: Request, res: Response) {
+  try {
+    const user = (req as any).user;
+    const { paymentIds } = req.body;
+
+    if (user.role !== "Merchant") {
+      return sendErrorResponse(res, 403, "Only merchants can verify COD receipt");
+    }
+
+    if (!paymentIds || !Array.isArray(paymentIds) || paymentIds.length === 0) {
+      return sendErrorResponse(res, 400, "Payment IDs array is required");
+    }
+
+    // Find store
+    const store = await StoreModel.findOne({ merchantId: user._id });
+    if (!store) {
+      return sendErrorResponse(res, 404, "Store not found for this merchant");
+    }
+
+    // Update payments
+    const result = await PaymentModel.updateMany(
+      {
+        _id: { $in: paymentIds },
+        store: store._id,
+        paymentMethod: "COD",
+        codSubmittedToStore: false
+      },
+      {
+        $set: {
+          codSubmittedToStore: true,
+          codSubmittedAt: new Date(),
+          notes: "Confirmed received by Merchant"
+        }
+      }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: `Successfully verified receipt of ${result.modifiedCount} payment(s)`,
+      verifiedCount: result.modifiedCount
+    });
+
+  } catch (error) {
+    console.error("Error verifying COD receipt:", error);
+    return sendErrorResponse(res, 500, "Internal server error");
+  }
+}
+

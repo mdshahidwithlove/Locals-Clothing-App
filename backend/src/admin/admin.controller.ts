@@ -744,3 +744,63 @@ export async function getAdminNotifications(req: Request, res: Response): Promis
     res.status(500).json({ success: false, message: error.message || 'Failed to fetch notifications' });
   }
 }
+
+const updateCommissionBodySchema = z.object({
+  commissionRate: z.number().min(0).max(100, 'Commission rate must be between 0 and 100')
+});
+
+export async function updateStoreCommission(req: CustomRequest, res: Response): Promise<Response> {
+  try {
+    const idParsed = mongoIdParamSchema.safeParse({ id: req.params.id });
+    if (!idParsed.success) {
+      return res.status(400).json({ success: false, message: 'Invalid store id' });
+    }
+    const bodyParsed = updateCommissionBodySchema.safeParse(req.body);
+    if (!bodyParsed.success) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid request body',
+        errors: bodyParsed.error.issues,
+      });
+    }
+    const data = await AdminService.updateStoreCommission(idParsed.data.id, bodyParsed.data.commissionRate);
+    return res.status(200).json({
+      success: true,
+      message: 'Store commission updated successfully',
+      data,
+    });
+  } catch (error: any) {
+    console.error('Update store commission error:', error);
+    if (error.message === 'Store not found') {
+      return res.status(404).json({ success: false, message: error.message });
+    }
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to update store commission',
+    });
+  }
+}
+
+export async function settleDeliveryPartnerCash(req: CustomRequest, res: Response): Promise<Response> {
+  try {
+    const idParsed = mongoIdParamSchema.safeParse({ id: req.params.id });
+    if (!idParsed.success) {
+      return res.status(400).json({ success: false, message: 'Invalid delivery partner id' });
+    }
+    const data = await AdminService.settleDeliveryPartnerCash(idParsed.data.id);
+    return res.status(200).json({
+      success: true,
+      message: 'Delivery partner cash balance settled successfully',
+      data,
+    });
+  } catch (error: any) {
+    console.error('Settle delivery partner cash error:', error);
+    if (error.message === 'Delivery partner not found') {
+      return res.status(404).json({ success: false, message: error.message });
+    }
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to settle delivery partner cash',
+    });
+  }
+}

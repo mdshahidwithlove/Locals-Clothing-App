@@ -10,7 +10,7 @@ import {
   Linking,
   Platform,
 } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE, UrlTile } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/constants/colors';
@@ -254,7 +254,15 @@ const ActiveDeliveryScreen: React.FC<ActiveDeliveryScreenProps> = ({ delivery, o
               showsUserLocation
               showsMyLocationButton
               followsUserLocation
+              mapType={Platform.OS === 'android' ? 'none' : 'standard'}
             >
+              {Platform.OS === 'android' && (
+                <UrlTile
+                  urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  maximumZ={19}
+                  tileSize={256}
+                />
+              )}
               {/* Current location marker */}
               {currentLocation && (
                 <Marker

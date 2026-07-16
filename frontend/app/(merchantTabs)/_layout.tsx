@@ -6,10 +6,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getPostAuthRoute } from '@/utils/authRouting';
 import { needsVerificationScreen } from '@/utils/verificationUtils';
 import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function MerchantTabLayout() {
   const { user, isLoading, refreshUserProfile } = useAuth();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   useFocusEffect(
     useCallback(() => {
@@ -36,6 +38,9 @@ export default function MerchantTabLayout() {
     );
   }
 
+  const bottomPadding = insets.bottom > 0 ? insets.bottom : (Platform.OS === 'ios' ? 30 : 10);
+  const barHeight = (Platform.OS === 'ios' ? 58 : 50) + bottomPadding;
+
   return (
     <Tabs
       screenOptions={{
@@ -45,8 +50,8 @@ export default function MerchantTabLayout() {
         tabBarStyle: {
           backgroundColor: Colors.navigationBackground,
           borderTopColor: Colors.border,
-          height: Platform.OS === 'ios' ? 88 : 60,
-          paddingBottom: Platform.OS === 'ios' ? 30 : 10,
+          height: barHeight,
+          paddingBottom: bottomPadding,
           paddingTop: 8,
         },
       }}>

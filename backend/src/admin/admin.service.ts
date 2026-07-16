@@ -1630,4 +1630,47 @@ export class AdminService {
       isValid: true
     };
   }
+
+  // Update a store's commission rate
+  static async updateStoreCommission(storeId: string, commissionRate: number): Promise<any> {
+    const store = await StoreModel.findById(storeId);
+    if (!store) {
+      throw new Error('Store not found');
+    }
+    
+    (store as any).commissionRate = commissionRate;
+    await store.save();
+    return store;
+  }
+
+  // Settle all unsubmitted COD cash held by a delivery partner
+  static async settleDeliveryPartnerCash(partnerId: string): Promise<any> {
+    const partner = await UserModel.findOne({ _id: partnerId, role: 'Delivery' });
+    if (!partner) {
+      throw new Error('Delivery partner not found');
+    }
+
+    // Find all unsubmitted COD payments collected by this rider
+    const payments = await PaymentModel.find({
+      codCollectedBy: partnerId,
+      paymentMethod: 'COD',
+      paymentStatus: 'Completed',
+      codSubmittedToStore: false
+    });
+
+    const totalSettledAmount = payments.reduce((sum, p) => sum + p.amount, 0);
+
+    // Settle them
+    for (const payment of payments) {
+      payment.codSubmittedToStore = true;
+      payment.codSubmittedAt = new Date();
+      payment.notes = (payment.notes ? payment.notes + ' | ' : '') + 'Settled by Admin';
+      await payment.save();
+    }
+
+    return {
+      count: payments.length,
+      amount: totalSettledAmount
+    };
+  }
 }

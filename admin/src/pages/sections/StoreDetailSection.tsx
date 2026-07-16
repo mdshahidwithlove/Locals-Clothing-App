@@ -14,7 +14,7 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-import { fetchStoreDetail, updateStoreStatus } from '../../services/dashboardApi';
+import { fetchStoreDetail, updateStoreStatus, updateStoreCommission } from '../../services/dashboardApi';
 import PageShell from '@/components/admin/PageShell';
 import AdminPageHeader from '@/components/admin/AdminPageHeader';
 import PanelCard from '@/components/admin/PanelCard';
@@ -53,6 +53,19 @@ export default function StoreDetailSection() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [toggling, setToggling] = useState(false);
+  const [isEditingCommission, setIsEditingCommission] = useState(false);
+  const [tempCommission, setTempCommission] = useState(5);
+
+  const handleSaveCommission = async () => {
+    if (!storeId) return;
+    try {
+      await updateStoreCommission(storeId, tempCommission);
+      setIsEditingCommission(false);
+      load();
+    } catch (e: any) {
+      alert(e?.response?.data?.message || e.message || 'Failed to update commission');
+    }
+  };
 
   const load = () => {
     if (!storeId) return;
@@ -309,7 +322,7 @@ export default function StoreDetailSection() {
           title="Financial Settlement Summary"
           description="Detailed breakdown of store sales, platform fees, COD cash collections, and outstanding settlement balance."
         >
-          <div className="grid gap-6 md:grid-cols-4 mt-4">
+          <div className="grid gap-6 md:grid-cols-5 mt-4">
             <div className="rounded-xl bg-stone-50 p-4 border border-stone-200/50">
               <span className="text-xs font-semibold uppercase text-stone-500">Gross Sales (Delivered)</span>
               <p className="text-xl font-bold text-stone-900 mt-1">{fmt(orderStats.totalRevenue)}</p>
@@ -332,6 +345,51 @@ export default function StoreDetailSection() {
               <span className="text-xs font-semibold uppercase text-stone-500">COD Cash Handed Over</span>
               <p className="text-xl font-bold text-stone-700 mt-1">{fmt(orderStats.codCollectedAndHandedOver || 0)}</p>
               <span className="text-[10px] text-stone-400">COD collected cash submitted to store</span>
+            </div>
+
+            <div className="rounded-xl bg-stone-50 p-4 border border-stone-200/50 relative">
+              <span className="text-xs font-semibold uppercase text-stone-500">Commission Rate</span>
+              <div className="flex items-center justify-between mt-1">
+                {isEditingCommission ? (
+                  <div className="flex items-center gap-1.5 w-full">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={tempCommission}
+                      onChange={(e) => setTempCommission(Number(e.target.value))}
+                      className="w-14 rounded border border-stone-300 px-1 py-0.5 text-sm font-bold text-stone-900 bg-white"
+                    />
+                    <span className="text-sm font-bold text-stone-700">%</span>
+                    <button
+                      onClick={handleSaveCommission}
+                      className="rounded bg-amber-700 px-1.5 py-0.5 text-[10px] font-bold text-white hover:bg-amber-800"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => setIsEditingCommission(false)}
+                      className="rounded bg-stone-200 px-1.5 py-0.5 text-[10px] font-bold text-stone-700 hover:bg-stone-300"
+                    >
+                      X
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-xl font-bold text-stone-900">{store.commissionRate ?? 5}%</p>
+                    <button
+                      onClick={() => {
+                        setTempCommission(store.commissionRate ?? 5);
+                        setIsEditingCommission(true);
+                      }}
+                      className="text-xs font-semibold text-amber-700 hover:underline"
+                    >
+                      Change
+                    </button>
+                  </>
+                )}
+              </div>
+              <span className="text-[10px] text-stone-400 block mt-1">Dynamic platform fee rate</span>
             </div>
           </div>
 

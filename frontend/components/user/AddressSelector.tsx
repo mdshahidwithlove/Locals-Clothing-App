@@ -448,7 +448,11 @@ export default function AddressSelector({
         title="Add Delivery Address"
         initialAddress={mapPrefillAddress}
         isSaving={isLoading}
-        showLocationActions={false}
+        showLocationActions={true}
+        onPickOnMap={() => {
+          setManualAddressVisible(false);
+          openMap();
+        }}
         onSave={async (formattedAddress) => {
           await saveManualAddress(formattedAddress);
           setMapPrefillAddress(undefined);
@@ -460,12 +464,18 @@ export default function AddressSelector({
         visible={mapVisible}
         animationType="slide"
         presentationStyle="fullScreen"
-        onRequestClose={() => setMapVisible(false)}
+        onRequestClose={() => {
+          setMapVisible(false);
+          setManualAddressVisible(true);
+        }}
       >
         <LocationPickerScreen
           initialRegion={mapRegion || undefined}
           title="Choose Location"
-          onClose={() => setMapVisible(false)}
+          onClose={() => {
+            setMapVisible(false);
+            setManualAddressVisible(true);
+          }}
           onConfirm={confirmPickedAddress}
         />
       </Modal>

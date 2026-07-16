@@ -20,8 +20,8 @@ const ANDROID_RES = path.join(ROOT, 'android/app/src/main/res');
 const CANVAS = 1024;
 const LOGO_SCALE = 0.62;
 /** Smaller than app icon — Android splash scales the drawable to ~240dp */
-const SPLASH_LOGO_SCALE = 0.36;
-const BG = '#FFD700';
+const SPLASH_LOGO_SCALE = 0.58;
+const BG = '#FFD21F';
 
 /** Must match the sizes already present under android/app/src/main/res */
 const ANDROID_SPLASH_SIZES = {

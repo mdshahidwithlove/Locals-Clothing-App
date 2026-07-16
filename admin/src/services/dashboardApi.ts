@@ -147,3 +147,13 @@ export async function fetchAdminNotifications() {
   const res = await api.get('/api/v1/admin/notifications');
   return res.data.data;
 }
+
+export async function updateStoreCommission(storeId: string, commissionRate: number) {
+  const res = await api.patch(`/api/v1/admin/stores/${storeId}/commission`, { commissionRate });
+  return res.data.data;
+}
+
+export async function settleDeliveryPartnerCash(partnerId: string) {
+  const res = await api.post(`/api/v1/admin/delivery-partners/${partnerId}/settle-cash`);
+  return res.data.data;
+}

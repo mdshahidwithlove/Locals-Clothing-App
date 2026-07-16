@@ -1,5 +1,5 @@
 import express from 'express';
-import { onboarding, verifyOtp, getProfile, registerUser, loginUser, completeProfile, updateProfile, getUserStats, deleteAccount, savePushToken } from '../controllers/usercontroller';
+import { onboarding, verifyOtp, getProfile, registerUser, loginUser, completeProfile, updateProfile, getUserStats, deleteAccount, savePushToken, getUserNotifications, markNotificationRead } from '../controllers/usercontroller';
 import { isAuthenticated } from '../middleware/auth';
 
 const userRoute = express.Router();
@@ -24,5 +24,9 @@ userRoute.post('/complete-profile', isAuthenticated, completeProfile);
 userRoute.delete('/account', isAuthenticated, deleteAccount);
 // Register/Update push notifications token
 userRoute.post('/push-token', isAuthenticated, savePushToken);
+// Get list of recent notifications
+userRoute.get('/notifications', isAuthenticated, getUserNotifications);
+// Mark notification as read
+userRoute.put('/notifications/:notificationId/read', isAuthenticated, markNotificationRead);
 
 export default userRoute;

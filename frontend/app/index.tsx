@@ -3,6 +3,8 @@ import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import { getPostAuthRoute } from '@/utils/authRouting';
+import { Image } from 'expo-image';
+import { LOCALS_LOGO } from '@/constants/branding';
 
 export default function IndexScreen() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -35,7 +37,15 @@ export default function IndexScreen() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#FFFFFF" />
+        <View style={styles.logoContainer}>
+          <Image
+            source={LOCALS_LOGO}
+            style={styles.logo}
+            contentFit="contain"
+            transition={200}
+          />
+        </View>
+        <ActivityIndicator size="large" color="#FFFFFF" style={styles.spinner} />
       </View>
     );
   }
@@ -48,7 +58,20 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFD700',
+    backgroundColor: '#FFD21F',
+  },
+  logoContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 300,
+    height: 300,
+  },
+  logo: {
+    width: 240,
+    height: 240,
+  },
+  spinner: {
+    marginTop: 24,
   },
 });
 

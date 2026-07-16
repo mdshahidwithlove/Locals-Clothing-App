@@ -57,11 +57,7 @@ export function resolveVerificationStatus(user: UserLike): VerificationStatus {
     return raw;
   }
 
-  // Legacy: schema default or missing field on pre-existing accounts
-  if (!raw || raw === 'not_required') {
-    return user.isProfileComplete ? 'approved' : 'pending_documents';
-  }
-
+  // Require explicit documents and approval; no auto-approval based on profile completeness.
   return 'pending_documents';
 }
 
@@ -73,9 +69,8 @@ export function requiresVerification(user: UserLike): boolean {
 }
 
 export function isVerificationApproved(user: UserLike): boolean {
-  const status = resolveVerificationStatus(user);
   if (user.role === 'User') return true;
-  return status === 'approved' || status === 'not_required';
+  return user.verificationStatus === 'approved';
 }
 
 function isExplicitVerificationStatus(status?: VerificationStatus): boolean {

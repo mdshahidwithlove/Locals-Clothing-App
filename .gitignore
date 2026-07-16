@@ -1,0 +1,12 @@
+# Keystore / upload keys
+app-upload-key.jks
+*.jks
+
+# Local database data
+mongodb_data/
+
+# IDE and Logs
+.vscode/
+*.log
+hs_err_pid*
+replay_pid*

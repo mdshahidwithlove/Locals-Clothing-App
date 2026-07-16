@@ -33,6 +33,22 @@ const updateOrderStatusSchema = z.object({
   cancellationReason: z.string().optional()
 });
 
+// Helper function to calculate platform fee based on store commission or global config
+async function calculatePlatformFee(storeId: string, itemsTotal: number): Promise<number> {
+  const store = await StoreModel.findById(storeId);
+  if (store && (store as any).commissionRate !== undefined && (store as any).commissionRate !== null) {
+    return Math.round(itemsTotal * ((store as any).commissionRate / 100));
+  }
+  const feeType = getConfig("PLATFORM_FEE_TYPE", "flat");
+  const feeValueRaw = getConfig("PLATFORM_FEE_VALUE", "5");
+  const feeValue = parseFloat(feeValueRaw) || 0;
+  if (feeType === "percentage") {
+    return Math.round(itemsTotal * (feeValue / 100));
+  } else {
+    return Math.round(feeValue);
+  }
+}
+
 // Helper function to create a single store order
 async function createSingleStoreOrder(
   user: any,
@@ -71,15 +87,7 @@ async function createSingleStoreOrder(
   const deliveryFee = Math.round(calculateDeliveryFee(itemsTotal));
 
   // Calculate dynamic platform fee
-  const feeType = getConfig("PLATFORM_FEE_TYPE", "flat");
-  const feeValueRaw = getConfig("PLATFORM_FEE_VALUE", "5");
-  const feeValue = parseFloat(feeValueRaw) || 0;
-  let platformFee = 0;
-  if (feeType === "percentage") {
-    platformFee = Math.round(itemsTotal * (feeValue / 100));
-  } else {
-    platformFee = Math.round(feeValue);
-  }
+  const platformFee = await calculatePlatformFee(storeId, itemsTotal);
 
   // Calculate total amount including platform fee
   const totalAmount = Math.round(itemsTotal + deliveryFee + platformFee);
@@ -317,15 +325,7 @@ async function createOrder(req: Request, res: Response) {
     const deliveryFee = Math.round(calculateDeliveryFee(itemsTotal));
 
     // Calculate dynamic platform fee
-    const feeType = getConfig("PLATFORM_FEE_TYPE", "flat");
-    const feeValueRaw = getConfig("PLATFORM_FEE_VALUE", "5");
-    const feeValue = parseFloat(feeValueRaw) || 0;
-    let platformFee = 0;
-    if (feeType === "percentage") {
-      platformFee = Math.round(itemsTotal * (feeValue / 100));
-    } else {
-      platformFee = Math.round(feeValue);
-    }
+    const platformFee = await calculatePlatformFee(storeId, itemsTotal);
 
     // Calculate total amount (ensure whole number)
     const totalAmount = Math.round(itemsTotal + deliveryFee + platformFee);

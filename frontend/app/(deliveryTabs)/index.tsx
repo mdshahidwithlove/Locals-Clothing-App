@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,10 +18,49 @@ export default function DeliveryHome() {
     totalEarnings: 0,
     deliveredDeliveries: 0,
     activeDeliveries: 0,
+    cashInHand: 0,
+    netOwed: 0,
   } as any);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [recentDeliveries, setRecentDeliveries] = useState<any[]>([]);
+  const [isSettling, setIsSettling] = useState(false);
+
+  const handleSettleOnline = async () => {
+    const amount = Math.round(stats.cashInHand || 0);
+    if (amount <= 0) {
+      Alert.alert("Info", "No cash in hand to settle.");
+      return;
+    }
+
+    Alert.alert(
+      "Settle Cash Online",
+      `Are you sure you want to settle your unsubmitted COD cash of ₹${amount} online?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Proceed",
+          onPress: async () => {
+            try {
+              setIsSettling(true);
+              const res = await apiClient.post('/api/v1/cod/settle-online');
+              if (res.data?.success) {
+                Alert.alert("Success", `Successfully settled ₹${amount} online!`);
+                loadDeliveryStats();
+              } else {
+                Alert.alert("Error", res.data?.message || "Failed to settle online.");
+              }
+            } catch (err: any) {
+              console.error("Error settling cash online:", err);
+              Alert.alert("Error", err?.response?.data?.message || err.message || "Failed to settle online.");
+            } finally {
+              setIsSettling(false);
+            }
+          }
+        }
+      ]
+    );
+  };
 
   const loadDeliveryStats = useCallback(async () => {
     try {
@@ -196,6 +235,19 @@ export default function DeliveryHome() {
           <Text style={styles.settlementNotice}>
             * Submit collected COD cash to stores or admin portal to clear your pending balances.
           </Text>
+          {(stats.cashInHand || 0) > 0 ? (
+            <TouchableOpacity 
+              style={styles.settleButton} 
+              onPress={handleSettleOnline}
+              disabled={isSettling}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="card" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <Text style={styles.settleButtonText}>
+                {isSettling ? "Settling..." : "Settle Owed Cash Online"}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
       </View>
 
@@ -558,5 +610,19 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontStyle: 'italic',
     lineHeight: 14,
+  },
+  settleButton: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    marginTop: 14,
+  },
+  settleButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

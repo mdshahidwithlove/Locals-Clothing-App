@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, RefreshControl, Alert, Image } from 'react-native';
 import { Colors } from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -22,6 +22,42 @@ export default function MerchantHome() {
   const [isLoading, setIsLoading] = useState(true);
   const [storeStatusOpen, setStoreStatusOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [analytics, setAnalytics] = useState<any>(null);
+  const [activeSectionTab, setActiveSectionTab] = useState<'financials' | 'riderCash' | 'products'>('financials');
+  const [isVerifying, setIsVerifying] = useState(false);
+
+  const handleVerifyCodReceipt = async (riderHolding: any) => {
+    const paymentIds = riderHolding.payments.map((p: any) => p.paymentId);
+    if (!paymentIds || paymentIds.length === 0) return;
+
+    Alert.alert(
+      "Confirm Cash Received",
+      `Are you sure you received ₹${Math.round(riderHolding.cashAmount)} cash from rider ${riderHolding.riderName}?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Confirm",
+          onPress: async () => {
+            try {
+              setIsVerifying(true);
+              const res = await apiClient.post('/api/v1/merchant-order/verify-cod', { paymentIds });
+              if (res.data?.success) {
+                Alert.alert("Success", `Receipt of ₹${Math.round(riderHolding.cashAmount)} verified successfully!`);
+                loadMerchantStats();
+              } else {
+                Alert.alert("Error", res.data?.message || "Failed to verify receipt.");
+              }
+            } catch (err: any) {
+              console.error("Error verifying COD receipt:", err);
+              Alert.alert("Error", err?.response?.data?.message || err.message || "Failed to verify receipt.");
+            } finally {
+              setIsVerifying(false);
+            }
+          }
+        }
+      ]
+    );
+  };
 
   const loadMerchantStats = useCallback(async () => {
     try {
@@ -46,6 +82,12 @@ export default function MerchantHome() {
       }
 
       // Removed settlements snapshot
+      
+      // Fetch analytics
+      const analyticsResp = await apiClient.get('/api/v1/merchant-order/analytics');
+      if (analyticsResp.data?.success) {
+        setAnalytics(analyticsResp.data.analytics);
+      }
 
       // Store rating from store details
       const storeResp = await apiClient.get('/api/v1/store/details');
@@ -157,6 +199,190 @@ export default function MerchantHome() {
           <Text style={styles.statLabel}>Store Status</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Revenue & Sales Analytics */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Store Revenue & Performance</Text>
+        
+        {/* Tab Headers */}
+        <View style={styles.tabHeaderContainer}>
+          <TouchableOpacity 
+            style={[styles.tabButton, activeSectionTab === 'financials' && styles.tabButtonActive]}
+            onPress={() => setActiveSectionTab('financials')}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.tabButtonText, activeSectionTab === 'financials' && styles.tabButtonTextActive]}>Financials</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.tabButton, activeSectionTab === 'riderCash' && styles.tabButtonActive]}
+            onPress={() => setActiveSectionTab('riderCash')}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.tabButtonText, activeSectionTab === 'riderCash' && styles.tabButtonTextActive]}>Rider Cash</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.tabButton, activeSectionTab === 'products' && styles.tabButtonActive]}
+            onPress={() => setActiveSectionTab('products')}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.tabButtonText, activeSectionTab === 'products' && styles.tabButtonTextActive]}>Products</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Tab Contents */}
+        {activeSectionTab === 'financials' && (
+          <View style={styles.gridContainer}>
+            <View style={styles.gridCard}>
+              <Text style={styles.gridLabel}>Gross Sales</Text>
+              <Text style={[styles.gridValue, { color: '#2D2D2D' }]}>
+                ₹{Math.round(analytics?.financials?.totalSales || 0)}
+              </Text>
+              <Text style={styles.gridSubtext}>From delivered orders</Text>
+            </View>
+
+            <View style={styles.gridCard}>
+              <Text style={styles.gridLabel}>Net Earnings (Profit)</Text>
+              <Text style={[styles.gridValue, { color: Colors.success }]}>
+                ₹{Math.round(analytics?.financials?.netEarnings || 0)}
+              </Text>
+              <Text style={styles.gridSubtext}>Sales minus platform fee</Text>
+            </View>
+
+            <View style={styles.gridCard}>
+              <Text style={styles.gridLabel}>Platform Fees Paid</Text>
+              <Text style={[styles.gridValue, { color: Colors.error }]}>
+                ₹{Math.round(analytics?.financials?.platformFees || 0)}
+              </Text>
+              <Text style={styles.gridSubtext}>Fees charged by platform</Text>
+            </View>
+
+            <View style={styles.gridCard}>
+              <Text style={styles.gridValue}>
+                {analytics?.financials?.totalOrders || 0}
+              </Text>
+              <Text style={styles.gridLabel}>Delivered Orders</Text>
+              <Text style={styles.gridSubtext}>Delivered orders count</Text>
+            </View>
+          </View>
+        )}
+
+        {activeSectionTab === 'riderCash' && (
+          <View>
+            <View style={[styles.gridContainer, { marginBottom: 16 }]}>
+              <View style={[styles.gridCard, { width: '48%' }]}>
+                <Text style={styles.gridLabel}>Rider Cash Holding</Text>
+                <Text style={[styles.gridValue, { color: '#E53935' }]}>
+                  ₹{Math.round(analytics?.codSummary?.unsubmittedCodAmount || 0)}
+                </Text>
+                <Text style={styles.gridSubtext}>COD cash yet to reach you</Text>
+              </View>
+              
+              <View style={[styles.gridCard, { width: '48%' }]}>
+                <Text style={styles.gridLabel}>Rider Cash Handed Over</Text>
+                <Text style={[styles.gridValue, { color: Colors.success }]}>
+                  ₹{Math.round(analytics?.codSummary?.submittedCodAmount || 0)}
+                </Text>
+                <Text style={styles.gridSubtext}>COD cash submitted successfully</Text>
+              </View>
+            </View>
+
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#2D2D2D', marginBottom: 8 }}>Riders Holding Cash</Text>
+            {!analytics?.codSummary?.riderHoldings || analytics.codSummary.riderHoldings.length === 0 ? (
+              <View style={{ padding: 16, backgroundColor: '#F9F9F9', borderRadius: 12, alignItems: 'center' }}>
+                <Text style={{ color: Colors.textSecondary, fontSize: 13 }}>No riders holding cash for your store.</Text>
+              </View>
+            ) : (
+              analytics.codSummary.riderHoldings.map((riderGroup: any) => (
+                <View key={riderGroup.riderId} style={styles.riderCard}>
+                  <View style={styles.riderHeader}>
+                    <View>
+                      <Text style={styles.riderName}>{riderGroup.riderName}</Text>
+                      <Text style={styles.riderPhone}>{riderGroup.riderPhone}</Text>
+                    </View>
+                    <Text style={styles.riderAmount}>₹{Math.round(riderGroup.cashAmount)}</Text>
+                  </View>
+                  <Text style={{ fontSize: 10, color: '#6F6F6F', marginBottom: 4 }}>
+                    Pending payments for: {riderGroup.payments.map((p: any) => `#${p.orderNumber}`).join(', ')}
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.verifyButton}
+                    onPress={() => handleVerifyCodReceipt(riderGroup)}
+                    disabled={isVerifying}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.verifyButtonText}>
+                      {isVerifying ? "Verifying..." : "Confirm Cash Received"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ))
+            )}
+          </View>
+        )}
+
+        {activeSectionTab === 'products' && (
+          <View>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#2D2D2D', marginBottom: 8 }}>Best Selling Products</Text>
+            {!analytics?.bestSellers || analytics.bestSellers.length === 0 ? (
+              <View style={{ padding: 16, backgroundColor: '#F9F9F9', borderRadius: 12, alignItems: 'center', marginBottom: 16 }}>
+                <Text style={{ color: Colors.textSecondary, fontSize: 13 }}>No sales records found.</Text>
+              </View>
+            ) : (
+              <View style={{ marginBottom: 16 }}>
+                {analytics.bestSellers.map((item: any) => (
+                  <View key={item._id} style={styles.productListItem}>
+                    <View style={styles.productThumbnail}>
+                      {item.product.images && item.product.images[0] ? (
+                        <Image source={{ uri: item.product.images[0] }} style={{ width: 44, height: 44, borderRadius: 8 }} />
+                      ) : (
+                        <Ionicons name="shirt-outline" size={20} color="#9E9E9E" />
+                      )}
+                    </View>
+                    <View style={styles.productDetails}>
+                      <Text style={styles.productNameText}>{item.product.name}</Text>
+                      <Text style={styles.productMetaText}>{item.product.category || 'Clothing'} • ₹{item.product.price}</Text>
+                    </View>
+                    <View>
+                      <Text style={styles.productSalesText}>{item.totalSold} sold</Text>
+                      <Text style={[styles.productMetaText, { textAlign: 'right' }]}>₹{Math.round(item.revenue)} revenue</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#2D2D2D', marginBottom: 8 }}>Trending & In Demand (Last 14 Days)</Text>
+            {!analytics?.trending || analytics.trending.length === 0 ? (
+              <View style={{ padding: 16, backgroundColor: '#F9F9F9', borderRadius: 12, alignItems: 'center' }}>
+                <Text style={{ color: Colors.textSecondary, fontSize: 13 }}>No trending items in the last 14 days.</Text>
+              </View>
+            ) : (
+              <View>
+                {analytics.trending.map((item: any) => (
+                  <View key={item._id} style={styles.productListItem}>
+                    <View style={styles.productThumbnail}>
+                      {item.product.images && item.product.images[0] ? (
+                        <Image source={{ uri: item.product.images[0] }} style={{ width: 44, height: 44, borderRadius: 8 }} />
+                      ) : (
+                        <Ionicons name="shirt-outline" size={20} color="#9E9E9E" />
+                      )}
+                    </View>
+                    <View style={styles.productDetails}>
+                      <Text style={styles.productNameText}>{item.product.name}</Text>
+                      <Text style={styles.productMetaText}>{item.product.category || 'Clothing'} • ₹{item.product.price}</Text>
+                    </View>
+                    <View>
+                      <Text style={styles.productSalesText}>{item.recentSold} sold recently</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+      </View>
 
       {/* Quick Actions */}
       <View style={styles.section}>
@@ -377,10 +603,152 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: Colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#2D2D2D',
+    marginBottom: 12,
+  },
+  // Tab styles
+  tabHeaderContainer: {
+    flexDirection: 'row',
     marginBottom: 16,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 12,
+    padding: 4,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  tabButtonActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  tabButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6F6F6F',
+  },
+  tabButtonTextActive: {
+    color: '#2D2D2D',
+  },
+  // Grid styles
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  gridCard: {
+    width: '47%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
+  },
+  gridLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6F6F6F',
+    textTransform: 'uppercase',
+  },
+  gridValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#2D2D2D',
+    marginTop: 4,
+  },
+  gridSubtext: {
+    fontSize: 9,
+    color: '#999999',
+    marginTop: 4,
+  },
+  // Rider card styles
+  riderCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
+    marginBottom: 10,
+  },
+  riderHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  riderName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2D2D2D',
+  },
+  riderPhone: {
+    fontSize: 11,
+    color: '#6F6F6F',
+    marginTop: 1,
+  },
+  riderAmount: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#E23744',
+  },
+  verifyButton: {
+    backgroundColor: '#28A745',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    alignSelf: 'flex-start',
+    marginTop: 6,
+  },
+  verifyButtonText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  // Product item styles
+  productListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F5',
+  },
+  productThumbnail: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: '#F5F5F5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    overflow: 'hidden',
+  },
+  productDetails: {
+    flex: 1,
+  },
+  productNameText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2D2D2D',
+  },
+  productMetaText: {
+    fontSize: 11,
+    color: '#6F6F6F',
+    marginTop: 2,
+  },
+  productSalesText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2D2D2D',
+    textAlign: 'right',
   },
   actionsContainer: {
     flexDirection: 'row',

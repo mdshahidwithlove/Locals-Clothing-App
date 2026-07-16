@@ -1,11 +1,12 @@
 import NotificationModel from "../Models/notificationModel";
 import UserModel from "../Models/userModel";
+import OrderModel from "../Models/orderModel";
 import type { Types } from "mongoose";
 import axios from "axios";
 
 export interface NotificationData {
   recipient: Types.ObjectId | string;
-  recipientRole: "User" | "Merchant" | "Delivery";
+  recipientRole: "User" | "Merchant" | "Delivery" | "Admin";
   type: "ORDER_PLACED" | "ORDER_ACCEPTED" | "ORDER_REJECTED" | "ORDER_READY" | "ORDER_PICKED" | "ORDER_DELIVERED" | "ORDER_CANCELLED" | "PAYMENT_SUCCESS" | "PAYMENT_FAILED" | "DELIVERY_ASSIGNED" | "RATING_RECEIVED" | "VERIFICATION_APPROVED" | "VERIFICATION_REJECTED" | "GENERAL";
   title: string;
   message: string;
@@ -124,6 +125,26 @@ export async function notifyOrderPlaced(
     actionUrl: `/merchant/orders/${orderId}`,
     actionLabel: "View Order"
   });
+
+  // Notify admins
+  try {
+    const admins = await UserModel.find({ role: "Admin" } as any).select("_id");
+    for (const admin of admins) {
+      await sendNotification({
+        recipient: admin._id,
+        recipientRole: "Admin",
+        type: "ORDER_PLACED",
+        title: "New Platform Order Placed",
+        message: `A new order #${orderNumber} worth ₹${orderAmount} has been placed at ${storeName}.`,
+        order: orderId,
+        store: storeId,
+        actionUrl: `/admin/orders/${orderId}`,
+        actionLabel: "View Order Details"
+      });
+    }
+  } catch (adminError) {
+    console.error("Failed to notify admins of new order:", adminError);
+  }
 }
 
 /**
@@ -194,6 +215,26 @@ export async function notifyOrderReady(
     actionUrl: `/order/${orderId}`,
     actionLabel: "Track Order"
   });
+
+  // Notify delivery partner (rider) if already assigned
+  try {
+    const order = await OrderModel.findById(orderId).select("deliveryPerson");
+    if (order && order.deliveryPerson) {
+      await sendNotification({
+        recipient: order.deliveryPerson as any,
+        recipientRole: "Delivery",
+        type: "ORDER_READY",
+        title: "Order Ready for Pickup!",
+        message: `Order #${orderNumber} is ready for pickup at ${storeName}. Please head to the store.`,
+        order: orderId,
+        store: storeId,
+        actionUrl: `/delivery/orders/${orderId}`,
+        actionLabel: "View Assignment"
+      });
+    }
+  } catch (err) {
+    console.error("Failed to notify delivery partner of ready order:", err);
+  }
 }
 
 /**

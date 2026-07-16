@@ -6,10 +6,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getPostAuthRoute } from '@/utils/authRouting';
 import { needsVerificationScreen } from '@/utils/verificationUtils';
 import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function DeliveryTabLayout() {
   const { user, isLoading, refreshUserProfile } = useAuth();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const canAccessDeliveryTabs = useMemo(() => {
     if (isLoading || !user) return false;
@@ -49,6 +51,9 @@ export default function DeliveryTabLayout() {
     );
   }
 
+  const bottomPadding = insets.bottom > 0 ? insets.bottom : (Platform.OS === 'ios' ? 30 : 10);
+  const barHeight = (Platform.OS === 'ios' ? 58 : 50) + bottomPadding;
+
   return (
     <Tabs
       screenOptions={{
@@ -58,8 +63,8 @@ export default function DeliveryTabLayout() {
         tabBarStyle: {
           backgroundColor: Colors.navigationBackground,
           borderTopColor: Colors.border,
-          height: Platform.OS === 'ios' ? 88 : 60,
-          paddingBottom: Platform.OS === 'ios' ? 30 : 10,
+          height: barHeight,
+          paddingBottom: bottomPadding,
           paddingTop: 8,
         },
       }}>

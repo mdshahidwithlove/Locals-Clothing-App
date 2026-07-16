@@ -6,11 +6,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import { PendingStoreReviewsProvider, usePendingStoreReviewsContext } from '@/contexts/PendingStoreReviewsContext';
 import { getPostAuthRoute } from '@/utils/authRouting';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function TabLayoutContent() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const { visiblePendingCount, fetchPendingReviews } = usePendingStoreReviewsContext();
+  const insets = useSafeAreaInsets();
 
   useFocusEffect(
     useCallback(() => {
@@ -34,6 +36,9 @@ function TabLayoutContent() {
     );
   }
 
+  const bottomPadding = insets.bottom > 0 ? insets.bottom : (Platform.OS === 'ios' ? 30 : 10);
+  const barHeight = (Platform.OS === 'ios' ? 58 : 50) + bottomPadding;
+
   return (
     <Tabs
       screenOptions={{
@@ -43,8 +48,8 @@ function TabLayoutContent() {
         tabBarStyle: {
           backgroundColor: Colors.navigationBackground,
           borderTopColor: Colors.border,
-          height: Platform.OS === 'ios' ? 88 : 60,
-          paddingBottom: Platform.OS === 'ios' ? 30 : 10,
+          height: barHeight,
+          paddingBottom: bottomPadding,
           paddingTop: 8,
         },
       }}>

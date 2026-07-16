@@ -1,9 +1,11 @@
 import express from "express";
 import {
+  getMerchantOrders,
+  getMerchantAnalytics,
+  verifyCodReceipt,
   acceptOrder,
   rejectOrder,
-  markReadyForPickup,
-  getMerchantOrders
+  markReadyForPickup
 } from "../controllers/merchantOrderController";
 import { isAuthenticated } from "../middleware/auth";
 import { requireRole } from "../middleware/roleAuth";
@@ -16,6 +18,12 @@ router.use(isAuthenticated, requireRole(['Merchant']), requireApprovedVerificati
 
 // Get merchant's orders
 router.get("/", getMerchantOrders);
+
+// Get merchant dashboard analytics
+router.get("/analytics", getMerchantAnalytics);
+
+// Verify receipt of COD cash from rider
+router.post("/verify-cod", verifyCodReceipt);
 
 // Accept an order
 router.post("/:orderId/accept", acceptOrder);

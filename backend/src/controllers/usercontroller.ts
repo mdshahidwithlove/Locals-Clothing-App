@@ -1012,4 +1012,63 @@ async function savePushToken(req: Request, res: Response) {
     }
 }
 
-export { onboarding, verifyOtp, getProfile, registerUser, loginUser, completeProfile, updateProfile, getUserStats, deleteAccount, savePushToken };
+/**
+ * Get recent/unread notifications for the authenticated user
+ */
+async function getUserNotifications(req: Request, res: Response) {
+    try {
+        const userId = (req as any).user._id;
+        const limit = parseInt(req.query.limit as string) || 20;
+
+        const notifications = await NotificationModel.find({ recipient: userId })
+            .sort({ createdAt: -1 })
+            .limit(limit);
+
+        return res.status(200).json({
+            success: true,
+            notifications,
+        });
+    } catch (error) {
+        console.error('Error fetching notifications:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch notifications.',
+        });
+    }
+}
+
+/**
+ * Mark a specific notification as read
+ */
+async function markNotificationRead(req: Request, res: Response) {
+    try {
+        const userId = (req as any).user._id;
+        const { notificationId } = req.params;
+
+        const notification = await NotificationModel.findOneAndUpdate(
+            { _id: notificationId, recipient: userId },
+            { isRead: true, readAt: new Date() },
+            { new: true }
+        );
+
+        if (!notification) {
+            return res.status(404).json({
+                success: false,
+                message: 'Notification not found or access denied',
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            notification,
+        });
+    } catch (error) {
+        console.error('Error marking notification read:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to update notification.',
+        });
+    }
+}
+
+export { onboarding, verifyOtp, getProfile, registerUser, loginUser, completeProfile, updateProfile, getUserStats, deleteAccount, savePushToken, getUserNotifications, markNotificationRead };

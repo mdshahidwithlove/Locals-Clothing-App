@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchDeliveryPartners, fetchDeliveryStats } from '../../services/dashboardApi';
+import { fetchDeliveryPartners, fetchDeliveryStats, settleDeliveryPartnerCash } from '../../services/dashboardApi';
 import { Truck, Wifi, WifiOff, Loader } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -273,7 +273,26 @@ export default function DeliverySection() {
                           {fmt(p.deliveryStats?.totalEarnings || 0)}
                         </td>
                         <td className="px-4 py-3 font-bold text-red-700 tabular-nums sm:px-6">
-                          {fmt(p.deliveryStats?.cashInHand || 0)}
+                          <div className="flex items-center gap-2">
+                            <span>{fmt(p.deliveryStats?.cashInHand || 0)}</span>
+                            {(p.deliveryStats?.cashInHand || 0) > 0 ? (
+                              <button
+                                onClick={async () => {
+                                  if (window.confirm(`Are you sure you want to mark ₹${Math.round(p.deliveryStats.cashInHand)} cash collected by ${p.name || 'this rider'} as settled?`)) {
+                                    try {
+                                      await settleDeliveryPartnerCash(p._id);
+                                      loadInitial();
+                                    } catch (e: any) {
+                                      alert(e?.response?.data?.message || e.message || 'Failed to settle cash');
+                                    }
+                                  }
+                                }}
+                                className="rounded bg-emerald-650 px-1.5 py-0.5 text-[10px] font-bold text-white hover:bg-emerald-700 active:bg-emerald-800 transition-colors"
+                              >
+                                Settle
+                              </button>
+                            ) : null}
+                          </div>
                         </td>
                         <td className="px-4 py-3 font-semibold text-amber-900 sm:px-6">
                           {p.deliveryStats?.avgRating
