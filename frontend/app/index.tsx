@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
@@ -7,9 +7,18 @@ import { getPostAuthRoute } from '@/utils/authRouting';
 export default function IndexScreen() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const router = useRouter();
+  const [minDelayDone, setMinDelayDone] = useState(false);
+
+  // Keep splash screen visible for a minimum of 2.5 seconds to show branding
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setMinDelayDone(true);
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && minDelayDone) {
       if (isAuthenticated) {
         console.log('🔍 Navigation Debug:', {
           isAuthenticated,
@@ -30,9 +39,9 @@ export default function IndexScreen() {
         router.replace('/auth/Auth');
       }
     }
-  }, [isAuthenticated, isLoading, user, router]);
+  }, [isAuthenticated, isLoading, minDelayDone, user, router]);
 
-  if (isLoading) {
+  if (isLoading || !minDelayDone) {
     return (
       <View style={styles.loadingContainer}>
         <View style={styles.logoContainer}>
