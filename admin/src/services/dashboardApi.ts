@@ -157,3 +157,19 @@ export async function settleDeliveryPartnerCash(partnerId: string) {
   const res = await api.post(`/api/v1/admin/delivery-partners/${partnerId}/settle-cash`);
   return res.data.data;
 }
+
+export async function fetchStoreSettlements(params?: { page?: number; limit?: number; store?: string }) {
+  const res = await api.get('/api/v1/admin/stores/settlements', { params });
+  return res.data.data;
+}
+
+export async function createStoreSettlement(storeId: string, data: {
+  amount: number;
+  type: "Payout" | "Collection";
+  paymentMethod: "BankTransfer" | "UPI" | "Cash" | "Other";
+  transactionReference?: string;
+  notes?: string;
+}) {
+  const res = await api.post(`/api/v1/admin/stores/${storeId}/settlements`, data);
+  return res.data.data;
+}

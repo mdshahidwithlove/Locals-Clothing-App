@@ -12,6 +12,8 @@ import {
   ShieldCheck,
   X,
   Settings,
+  Coins,
+  Briefcase,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { cn } from '@/lib/utils';
@@ -31,7 +33,9 @@ const MENU_ITEMS: MenuItem[] = [
   { icon: ClipboardList, label: 'Orders', href: '/dashboard/orders' },
   { icon: Users, label: 'Users', href: '/dashboard/users' },
   { icon: Truck, label: 'Delivery', href: '/dashboard/delivery' },
+  { icon: Coins, label: 'COD Management', href: '/dashboard/cod' },
   { icon: Store, label: 'Stores', href: '/dashboard/stores' },
+  { icon: Briefcase, label: 'Vendor Settlements', href: '/dashboard/vendor-settlements' },
   { icon: ShieldCheck, label: 'Merchant verify', href: '/dashboard/verification/merchants' },
   { icon: ShieldCheck, label: 'Delivery verify', href: '/dashboard/verification/delivery' },
   { icon: Settings, label: 'Settings', href: '/dashboard/settings' },

@@ -804,3 +804,80 @@ export async function settleDeliveryPartnerCash(req: CustomRequest, res: Respons
     });
   }
 }
+
+const createSettlementBodySchema = z.object({
+  amount: z.number().positive('Amount must be positive'),
+  type: z.enum(['Payout', 'Collection']),
+  paymentMethod: z.enum(['BankTransfer', 'UPI', 'Cash', 'Other']),
+  transactionReference: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+export async function getStoreSettlements(req: Request, res: Response): Promise<Response> {
+  try {
+    const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
+    const store = req.query.store as string;
+
+    const data = await AdminService.getStoreSettlements({ page, limit, store });
+    return res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error: any) {
+    console.error('Fetch store settlements error:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to fetch store settlements',
+    });
+  }
+}
+
+export async function createStoreSettlement(req: CustomRequest, res: Response): Promise<Response> {
+  try {
+    const idParsed = mongoIdParamSchema.safeParse({ id: req.params.id });
+    if (!idParsed.success) {
+      return res.status(400).json({ success: false, message: 'Invalid store id' });
+    }
+    const bodyParsed = createSettlementBodySchema.safeParse(req.body);
+    if (!bodyParsed.success) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid request body',
+        errors: bodyParsed.error.issues,
+      });
+    }
+
+    const adminId = req.user?._id;
+    if (!adminId) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const { amount, type, paymentMethod, transactionReference, notes } = bodyParsed.data;
+
+    const data = await AdminService.createStoreSettlement(
+      idParsed.data.id,
+      amount,
+      type,
+      paymentMethod,
+      transactionReference,
+      notes,
+      adminId.toString()
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: 'Store settlement recorded successfully',
+      data,
+    });
+  } catch (error: any) {
+    console.error('Record store settlement error:', error);
+    if (error.message === 'Store not found') {
+      return res.status(404).json({ success: false, message: error.message });
+    }
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to record store settlement',
+    });
+  }
+}

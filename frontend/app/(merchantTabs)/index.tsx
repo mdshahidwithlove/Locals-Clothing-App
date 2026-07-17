@@ -23,7 +23,7 @@ export default function MerchantHome() {
   const [storeStatusOpen, setStoreStatusOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [analytics, setAnalytics] = useState<any>(null);
-  const [activeSectionTab, setActiveSectionTab] = useState<'financials' | 'riderCash' | 'products'>('financials');
+  const [activeSectionTab, setActiveSectionTab] = useState<'financials' | 'riderCash' | 'products' | 'settlements'>('financials');
   const [isVerifying, setIsVerifying] = useState(false);
 
   const handleVerifyCodReceipt = async (riderHolding: any) => {
@@ -229,6 +229,14 @@ export default function MerchantHome() {
           >
             <Text style={[styles.tabButtonText, activeSectionTab === 'products' && styles.tabButtonTextActive]}>Products</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.tabButton, activeSectionTab === 'settlements' && styles.tabButtonActive]}
+            onPress={() => setActiveSectionTab('settlements')}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.tabButtonText, activeSectionTab === 'settlements' && styles.tabButtonTextActive]}>Payouts</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Tab Contents */}
@@ -379,6 +387,98 @@ export default function MerchantHome() {
                   </View>
                 ))}
               </View>
+            )}
+          </View>
+        )}
+
+        {activeSectionTab === 'settlements' && (
+          <View>
+            {/* Balance Banner */}
+            <View style={[
+              styles.balanceBanner,
+              (analytics?.financials?.netBalance || 0) < 0
+                ? { backgroundColor: '#E8F5E9', borderColor: '#C8E6C9' }
+                : (analytics?.financials?.netBalance || 0) > 0
+                  ? { backgroundColor: '#FFEBEE', borderColor: '#FFCDD2' }
+                  : { backgroundColor: '#F5F5F5', borderColor: '#E0E0E0' }
+            ]}>
+              <Ionicons 
+                name={(analytics?.financials?.netBalance || 0) < 0 ? "wallet-outline" : "alert-circle-outline"} 
+                size={22} 
+                color={(analytics?.financials?.netBalance || 0) < 0 ? '#2E7D32' : (analytics?.financials?.netBalance || 0) > 0 ? '#C62828' : '#757575'} 
+              />
+              <View style={{ marginLeft: 8, flex: 1 }}>
+                <Text style={styles.balanceTitle}>Outstanding Account Balance</Text>
+                <Text style={[
+                  styles.balanceValue,
+                  { color: (analytics?.financials?.netBalance || 0) < 0 ? '#2E7D32' : (analytics?.financials?.netBalance || 0) > 0 ? '#C62828' : '#212121' }
+                ]}>
+                  {(analytics?.financials?.netBalance || 0) < 0 
+                    ? `Platform owes you: ₹${Math.abs(Math.round(analytics.financials.netBalance))}`
+                    : (analytics?.financials?.netBalance || 0) > 0
+                      ? `You owe Platform: ₹${Math.round(analytics.financials.netBalance)}`
+                      : 'Fully Settled (₹0)'
+                  }
+                </Text>
+              </View>
+            </View>
+
+            {/* Payout Totals */}
+            <View style={[styles.gridContainer, { marginBottom: 16 }]}>
+              <View style={[styles.gridCard, { width: '48%' }]}>
+                <Text style={styles.gridLabel}>Platform Payouts</Text>
+                <Text style={[styles.gridValue, { color: '#2E7D32' }]}>
+                  ₹{Math.round(analytics?.settlementSummary?.totalPayouts || 0)}
+                </Text>
+                <Text style={styles.gridSubtext}>UPI / bank settlements paid to you</Text>
+              </View>
+              
+              <View style={[styles.gridCard, { width: '48%' }]}>
+                <Text style={styles.gridLabel}>Cash Collected</Text>
+                <Text style={[styles.gridValue, { color: '#C62828' }]}>
+                  ₹{Math.round(analytics?.settlementSummary?.totalCollections || 0)}
+                </Text>
+                <Text style={styles.gridSubtext}>Commissions/Cash collected from you</Text>
+              </View>
+            </View>
+
+            {/* Settlements Ledger */}
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#2D2D2D', marginBottom: 8 }}>Settlement History Log</Text>
+            {!analytics?.settlementSummary?.recentSettlements || analytics.settlementSummary.recentSettlements.length === 0 ? (
+              <View style={{ padding: 16, backgroundColor: '#F9F9F9', borderRadius: 12, alignItems: 'center' }}>
+                <Text style={{ color: '#6F6F6F', fontSize: 13 }}>No past settlement transactions found.</Text>
+              </View>
+            ) : (
+              analytics.settlementSummary.recentSettlements.map((tx: any) => (
+                <View key={tx._id} style={styles.ledgerCard}>
+                  <View style={styles.ledgerHeader}>
+                    <View>
+                      <Text style={styles.ledgerType}>
+                        {tx.type === 'Payout' ? 'Platform Paid You' : 'Collected from Store'}
+                      </Text>
+                      <Text style={styles.ledgerDate}>
+                        {new Date(tx.createdAt).toLocaleDateString('en-IN', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric'
+                        })}
+                      </Text>
+                    </View>
+                    <Text style={[
+                      styles.ledgerAmount,
+                      { color: tx.type === 'Payout' ? '#2E7D32' : '#C62828' }
+                    ]}>
+                      {tx.type === 'Payout' ? '+' : '-'}₹{Math.round(tx.amount)}
+                    </Text>
+                  </View>
+                  {tx.transactionReference && (
+                    <Text style={styles.ledgerRef}>Ref: {tx.transactionReference} ({tx.paymentMethod})</Text>
+                  )}
+                  {tx.notes && (
+                    <Text style={styles.ledgerNotes}>Note: {tx.notes}</Text>
+                  )}
+                </View>
+              ))
             )}
           </View>
         )}
@@ -915,5 +1015,65 @@ const styles = StyleSheet.create({
   storeStatusCancel: {
     alignSelf: 'flex-end',
     marginTop: 10,
+  },
+  balanceBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  balanceTitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6F6F6F',
+    textTransform: 'uppercase',
+  },
+  balanceValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  ledgerCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
+    marginBottom: 8,
+  },
+  ledgerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  ledgerType: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2D2D2D',
+  },
+  ledgerDate: {
+    fontSize: 10,
+    color: '#999999',
+    marginTop: 2,
+  },
+  ledgerAmount: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  ledgerRef: {
+    fontSize: 10,
+    color: '#6F6F6F',
+    marginTop: 6,
+  },
+  ledgerNotes: {
+    fontSize: 11,
+    color: '#757575',
+    fontStyle: 'italic',
+    marginTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: '#F5F5F5',
+    paddingTop: 4,
   },
 });

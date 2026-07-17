@@ -503,15 +503,56 @@ export async function getMerchantAnalytics(req: Request, res: Response) {
       }
     }
 
+    // 6. Settlements: Payouts and Collections
+    const StoreSettlementModel = require("../Models/storeSettlementModel").default;
+    
+    const settlementsAgg = await StoreSettlementModel.aggregate([
+      { $match: { store: store._id } },
+      {
+        $group: {
+          _id: null,
+          totalPayouts: {
+            $sum: { $cond: [{ $eq: ['$type', 'Payout'] }, '$amount', 0] }
+          },
+          totalCollections: {
+            $sum: { $cond: [{ $eq: ['$type', 'Collection'] }, '$amount', 0] }
+          }
+        }
+      }
+    ]);
+    
+    const sett = settlementsAgg[0] || { totalPayouts: 0, totalCollections: 0 };
+    const totalPayouts = sett.totalPayouts || 0;
+    const totalCollections = sett.totalCollections || 0;
+    
+    const storeNetEarnings = financials.netEarnings || 0;
+    const codCollectedAndHandedOver = submittedCodAmount || 0;
+    const netBalance = Math.round(codCollectedAndHandedOver - storeNetEarnings + totalPayouts - totalCollections);
+
+    const settlements = await StoreSettlementModel.find({ store: store._id })
+      .populate('settledBy', 'name username')
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .lean();
+
     return res.status(200).json({
       success: true,
       message: "Merchant analytics retrieved successfully",
       analytics: {
-        financials,
+        financials: {
+          ...financials,
+          netBalance
+        },
         codSummary: {
           unsubmittedCodAmount,
           submittedCodAmount,
           riderHoldings: populatedRiderHoldings
+        },
+        settlementSummary: {
+          netBalance,
+          totalPayouts,
+          totalCollections,
+          recentSettlements: settlements
         },
         bestSellers,
         trending

@@ -9,8 +9,10 @@ import RevenueSection from '@/pages/sections/RevenueSection';
 import OrdersSection from '@/pages/sections/OrdersSection';
 import UsersSection from '@/pages/sections/UsersSection';
 import DeliverySection from '@/pages/sections/DeliverySection';
+import CodSection from '@/pages/sections/CodSection';
 import StoresSection from '@/pages/sections/StoresSection';
 import StoreDetailSection from '@/pages/sections/StoreDetailSection';
+import VendorSettlementSection from '@/pages/sections/VendorSettlementSection';
 import MerchantVerificationSection from '@/pages/sections/MerchantVerificationSection';
 import DeliveryVerificationSection from '@/pages/sections/DeliveryVerificationSection';
 import MerchantVerificationDetailSection from '@/pages/sections/MerchantVerificationDetailSection';
@@ -46,8 +48,10 @@ function App() {
         <Route path="orders" element={<OrdersSection />} />
         <Route path="users" element={<UsersSection />} />
         <Route path="delivery" element={<DeliverySection />} />
+        <Route path="cod" element={<CodSection />} />
         <Route path="stores" element={<StoresSection />} />
         <Route path="stores/:storeId" element={<StoreDetailSection />} />
+        <Route path="vendor-settlements" element={<VendorSettlementSection />} />
         <Route path="verification/merchants" element={<MerchantVerificationSection />} />
         <Route path="verification/merchants/:userId" element={<MerchantVerificationDetailSection />} />
         <Route path="verification/delivery" element={<DeliveryVerificationSection />} />

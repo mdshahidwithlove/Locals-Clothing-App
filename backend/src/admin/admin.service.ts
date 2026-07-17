@@ -9,6 +9,7 @@ import StoreModel from '../Models/storeModel';
 import PaymentModel from '../Models/paymentModel';
 import DeliveryModel from '../Models/deliveryModel';
 import ReturnModel from '../Models/returnModel';
+import StoreSettlementModel from '../Models/storeSettlementModel';
 import { resolveVerificationStatus, verificationFieldsForClient } from '../utils/verificationUtils';
 import type { VerificationStatus } from '../types/verification';
 import { notifyVerificationDecision } from '../utils/notificationUtils';
@@ -506,6 +507,7 @@ export class AdminService {
         .populate('order', 'orderNumber totalAmount status')
         .populate('user', 'name phone email')
         .populate('store', 'storeName')
+        .populate('codCollectedBy', 'name phone')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -1044,7 +1046,7 @@ export class AdminService {
     const rows = await StoreModel.aggregate(pipeline);
     const storeIds = rows.map((s: any) => s._id);
 
-    const [allFinAgg, allPaymentAgg] = await Promise.all([
+    const [allFinAgg, allPaymentAgg, allSettlementsAgg] = await Promise.all([
       OrderModel.aggregate([
         { $match: { store: { $in: storeIds }, status: 'Delivered' } },
         {
@@ -1075,11 +1077,26 @@ export class AdminService {
             codSubmittedTotal: { $sum: '$amount' }
           }
         }
+      ]),
+      StoreSettlementModel.aggregate([
+        { $match: { store: { $in: storeIds } } },
+        {
+          $group: {
+            _id: '$store',
+            totalPayouts: {
+              $sum: { $cond: [{ $eq: ['$type', 'Payout'] }, '$amount', 0] }
+            },
+            totalCollections: {
+              $sum: { $cond: [{ $eq: ['$type', 'Collection'] }, '$amount', 0] }
+            }
+          }
+        }
       ])
     ]);
 
     const finMap: Record<string, any> = {};
     const paymentMap: Record<string, any> = {};
+    const settlementMap: Record<string, any> = {};
 
     allFinAgg.forEach((f: any) => {
       if (f._id) {
@@ -1093,15 +1110,25 @@ export class AdminService {
       }
     });
 
+    allSettlementsAgg.forEach((s: any) => {
+      if (s._id) {
+        settlementMap[s._id.toString()] = s;
+      }
+    });
+
     const stores = rows.map((s: any) => {
       const sidStr = s._id.toString();
       const fin = finMap[sidStr] || { totalDeliveredSales: 0, totalPlatformFee: 0, onlineSales: 0 };
       const pay = paymentMap[sidStr] || { codSubmittedTotal: 0 };
+      const sett = settlementMap[sidStr] || { totalPayouts: 0, totalCollections: 0 };
 
       const totalPlatformFee = Math.round(fin.totalPlatformFee);
       const storeNetEarnings = Math.round(fin.totalDeliveredSales - totalPlatformFee);
       const codCollectedAndHandedOver = Math.round(pay.codSubmittedTotal);
-      const netBalance = Math.round(codCollectedAndHandedOver - storeNetEarnings);
+      
+      const totalPayouts = sett.totalPayouts || 0;
+      const totalCollections = sett.totalCollections || 0;
+      const netBalance = Math.round(codCollectedAndHandedOver - storeNetEarnings + totalPayouts - totalCollections);
 
       return {
         _id: s._id,
@@ -1110,6 +1137,7 @@ export class AdminService {
         rating: s.rating,
         isActive: s.isActive,
         createdAt: s.createdAt,
+        commissionRate: s.commissionRate,
         orderStats: {
           ...s.orderStats,
           totalPlatformFee,
@@ -1248,7 +1276,7 @@ export class AdminService {
       orderStatusBreakdown[s._id] = s.count;
     });
 
-    const [finAgg, paymentAgg] = await Promise.all([
+    const [finAgg, paymentAgg, settlementsAgg] = await Promise.all([
       OrderModel.aggregate([
         { $match: { store: sid, status: 'Delivered' } },
         {
@@ -1279,16 +1307,34 @@ export class AdminService {
             codSubmittedTotal: { $sum: '$amount' }
           }
         }
+      ]),
+      StoreSettlementModel.aggregate([
+        { $match: { store: sid } },
+        {
+          $group: {
+            _id: null,
+            totalPayouts: {
+              $sum: { $cond: [{ $eq: ['$type', 'Payout'] }, '$amount', 0] }
+            },
+            totalCollections: {
+              $sum: { $cond: [{ $eq: ['$type', 'Collection'] }, '$amount', 0] }
+            }
+          }
+        }
       ])
     ]);
 
     const fin = finAgg[0] || { totalDeliveredSales: 0, totalPlatformFee: 0, onlineSales: 0 };
     const pay = paymentAgg[0] || { codSubmittedTotal: 0 };
+    const sett = settlementsAgg[0] || { totalPayouts: 0, totalCollections: 0 };
 
     const totalPlatformFee = Math.round(fin.totalPlatformFee);
     const storeNetEarnings = Math.round(fin.totalDeliveredSales - totalPlatformFee);
     const codCollectedAndHandedOver = Math.round(pay.codSubmittedTotal);
-    const netBalance = Math.round(codCollectedAndHandedOver - storeNetEarnings);
+    
+    const totalPayouts = sett.totalPayouts || 0;
+    const totalCollections = sett.totalCollections || 0;
+    const netBalance = Math.round(codCollectedAndHandedOver - storeNetEarnings + totalPayouts - totalCollections);
 
     const s = store as any;
 
@@ -1671,6 +1717,72 @@ export class AdminService {
     return {
       count: payments.length,
       amount: totalSettledAmount
+    };
+  }
+
+  // Record a new store settlement transaction
+  static async createStoreSettlement(
+    storeId: string,
+    amount: number,
+    type: "Payout" | "Collection",
+    paymentMethod: "BankTransfer" | "UPI" | "Cash" | "Other",
+    transactionReference?: string,
+    notes?: string,
+    adminId?: string
+  ): Promise<any> {
+    const store = await StoreModel.findById(storeId);
+    if (!store) {
+      throw new Error('Store not found');
+    }
+
+    const settlement = new StoreSettlementModel({
+      store: storeId,
+      amount,
+      type,
+      paymentMethod,
+      transactionReference,
+      notes,
+      settledBy: adminId
+    });
+
+    await settlement.save();
+    return settlement;
+  }
+
+  // Get store settlements history (paginated)
+  static async getStoreSettlements(query: {
+    page?: number;
+    limit?: number;
+    store?: string;
+  }): Promise<any> {
+    const page = Math.max(1, query.page || 1);
+    const limit = Math.min(100, Math.max(1, query.limit || 20));
+    const skip = (page - 1) * limit;
+
+    const filter: any = {};
+    if (query.store) {
+      filter.store = query.store;
+    }
+
+    const [settlements, total] = await Promise.all([
+      StoreSettlementModel.find(filter)
+        .populate('store', 'storeName')
+        .populate('settledBy', 'name username')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      StoreSettlementModel.countDocuments(filter)
+    ]);
+
+    return {
+      settlements,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
     };
   }
 }
