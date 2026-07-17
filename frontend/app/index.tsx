@@ -71,11 +71,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoText: {
-    fontSize: 56,
+    fontSize: 96,
     fontWeight: '900',
     fontFamily: Platform.OS === 'ios' ? 'Georgia-Bold' : 'serif',
     color: '#000000',
-    letterSpacing: -1,
+    letterSpacing: 2,
   },
   footerContainer: {
     position: 'absolute',
