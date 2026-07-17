@@ -1,10 +1,8 @@
 import React, { useEffect } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import { getPostAuthRoute } from '@/utils/authRouting';
-import { Image } from 'expo-image';
-import { LOCALS_LOGO } from '@/constants/branding';
 
 export default function IndexScreen() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -38,14 +36,13 @@ export default function IndexScreen() {
     return (
       <View style={styles.loadingContainer}>
         <View style={styles.logoContainer}>
-          <Image
-            source={LOCALS_LOGO}
-            style={styles.logo}
-            contentFit="contain"
-            transition={200}
-          />
+          <Text style={styles.logoText}>Locals</Text>
         </View>
-        <ActivityIndicator size="large" color="#FFFFFF" style={styles.spinner} />
+        
+        <View style={styles.footerContainer}>
+          <Text style={styles.footerCopyright}>© 2024 Locals Inc.</Text>
+          <Text style={styles.footerLoading}>Loading...</Text>
+        </View>
       </View>
     );
   }
@@ -63,15 +60,31 @@ const styles = StyleSheet.create({
   logoContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-    width: 300,
-    height: 300,
   },
-  logo: {
-    width: 240,
-    height: 240,
+  logoText: {
+    fontSize: 56,
+    fontWeight: '900',
+    fontFamily: Platform.OS === 'ios' ? 'Georgia-Bold' : 'serif',
+    color: '#000000',
+    letterSpacing: -1,
   },
-  spinner: {
-    marginTop: 24,
+  footerContainer: {
+    position: 'absolute',
+    bottom: 48,
+    alignItems: 'center',
+  },
+  footerCopyright: {
+    fontSize: 11,
+    color: '#000000',
+    opacity: 0.9,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  footerLoading: {
+    fontSize: 11,
+    color: '#000000',
+    opacity: 0.7,
+    fontWeight: '600',
   },
 });
 
