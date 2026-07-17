@@ -19,6 +19,7 @@ import geocodeRoute from "./routes/geocodeRoutes";
 import adminRoute from "./admin/admin.routes";
 import verificationRoute from "./routes/verificationRoutes";
 import returnRoute from "./routes/returnRoutes";
+import withdrawalRoute from "./routes/withdrawalRoutes";
 import { initializeRazorpay } from "./controllers/paymentController";
 import { requestTimeout } from "./middleware/timeout";
 import { startAssignmentScheduler, stopAssignmentScheduler } from "./services/assignmentScheduler";
@@ -69,6 +70,7 @@ app.use("/api/v1", geocodeRoute);
 app.use("/api/v1/admin", adminRoute);
 app.use("/api/v1/user/verification", verificationRoute);
 app.use("/api/v1/returns", returnRoute);
+app.use("/api/v1/withdrawals", withdrawalRoute);
 
 const PORT = process.env.PORT || 10000;
 

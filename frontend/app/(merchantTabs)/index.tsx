@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, RefreshControl, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, RefreshControl, Alert, Image, Modal, TextInput, ActivityIndicator } from 'react-native';
 import { Colors } from '@/constants/colors';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -23,40 +23,74 @@ export default function MerchantHome() {
   const [storeStatusOpen, setStoreStatusOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [analytics, setAnalytics] = useState<any>(null);
-  const [activeSectionTab, setActiveSectionTab] = useState<'financials' | 'riderCash' | 'products' | 'settlements'>('financials');
-  const [isVerifying, setIsVerifying] = useState(false);
+  const [activeSectionTab, setActiveSectionTab] = useState<'financials' | 'products' | 'settlements'>('financials');
+  
+  // Withdrawal states
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [withdrawMethod, setWithdrawMethod] = useState<'UPI' | 'BankTransfer'>('UPI');
+  const [upiId, setUpiId] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [ifscCode, setIfscCode] = useState('');
+  const [accountHolderName, setAccountHolderName] = useState('');
+  const [isSubmittingWithdraw, setIsSubmittingWithdraw] = useState(false);
+  const [withdrawalHistory, setWithdrawalHistory] = useState<any[]>([]);
 
-  const handleVerifyCodReceipt = async (riderHolding: any) => {
-    const paymentIds = riderHolding.payments.map((p: any) => p.paymentId);
-    if (!paymentIds || paymentIds.length === 0) return;
+  const handleRequestWithdrawal = async () => {
+    const amt = parseFloat(withdrawAmount);
+    if (!amt || amt <= 0) {
+      Alert.alert("Error", "Please enter a valid amount.");
+      return;
+    }
+    
+    const maxWithdrawable = Math.abs(Math.round(analytics?.financials?.netBalance || 0));
+    if (amt > maxWithdrawable) {
+      Alert.alert("Error", `Cannot request more than available balance (₹${maxWithdrawable}).`);
+      return;
+    }
+    
+    if (withdrawMethod === 'UPI' && !upiId.trim()) {
+      Alert.alert("Error", "Please enter your UPI ID.");
+      return;
+    }
+    
+    if (withdrawMethod === 'BankTransfer') {
+      if (!bankName.trim() || !accountNumber.trim() || !ifscCode.trim() || !accountHolderName.trim()) {
+        Alert.alert("Error", "Please fill in all bank details.");
+        return;
+      }
+    }
 
-    Alert.alert(
-      "Confirm Cash Received",
-      `Are you sure you received ₹${Math.round(riderHolding.cashAmount)} cash from rider ${riderHolding.riderName}?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Confirm",
-          onPress: async () => {
-            try {
-              setIsVerifying(true);
-              const res = await apiClient.post('/api/v1/merchant-order/verify-cod', { paymentIds });
-              if (res.data?.success) {
-                Alert.alert("Success", `Receipt of ₹${Math.round(riderHolding.cashAmount)} verified successfully!`);
-                loadMerchantStats();
-              } else {
-                Alert.alert("Error", res.data?.message || "Failed to verify receipt.");
-              }
-            } catch (err: any) {
-              console.error("Error verifying COD receipt:", err);
-              Alert.alert("Error", err?.response?.data?.message || err.message || "Failed to verify receipt.");
-            } finally {
-              setIsVerifying(false);
-            }
-          }
-        }
-      ]
-    );
+    try {
+      setIsSubmittingWithdraw(true);
+      const paymentDetails = withdrawMethod === 'UPI' 
+        ? { method: 'UPI', upiId: upiId.trim() }
+        : { 
+            method: 'BankTransfer', 
+            bankName: bankName.trim(), 
+            accountNumber: accountNumber.trim(), 
+            ifscCode: ifscCode.trim(), 
+            accountHolderName: accountHolderName.trim() 
+          };
+
+      const res = await apiClient.post('/api/v1/withdrawals/request', {
+        amount: amt,
+        paymentDetails
+      });
+
+      if (res.data?.success) {
+        Alert.alert("Success", "Withdrawal request submitted successfully!");
+        setShowWithdrawModal(false);
+        setWithdrawAmount('');
+        loadMerchantStats();
+      }
+    } catch (error: any) {
+      console.error('Error requesting withdrawal:', error);
+      Alert.alert("Error", error?.response?.data?.message || error.message || "Failed to request withdrawal.");
+    } finally {
+      setIsSubmittingWithdraw(false);
+    }
   };
 
   const loadMerchantStats = useCallback(async () => {
@@ -87,6 +121,16 @@ export default function MerchantHome() {
       const analyticsResp = await apiClient.get('/api/v1/merchant-order/analytics');
       if (analyticsResp.data?.success) {
         setAnalytics(analyticsResp.data.analytics);
+      }
+
+      // Load withdrawal history
+      try {
+        const res = await apiClient.get('/api/v1/withdrawals/history');
+        if (res.data?.success) {
+          setWithdrawalHistory(res.data.history || []);
+        }
+      } catch (error) {
+        console.error('Error loading withdrawal history:', error);
       }
 
       // Store rating from store details
@@ -215,14 +259,6 @@ export default function MerchantHome() {
           </TouchableOpacity>
           
           <TouchableOpacity 
-            style={[styles.tabButton, activeSectionTab === 'riderCash' && styles.tabButtonActive]}
-            onPress={() => setActiveSectionTab('riderCash')}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.tabButtonText, activeSectionTab === 'riderCash' && styles.tabButtonTextActive]}>Rider Cash</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
             style={[styles.tabButton, activeSectionTab === 'products' && styles.tabButtonActive]}
             onPress={() => setActiveSectionTab('products')}
             activeOpacity={0.7}
@@ -276,59 +312,7 @@ export default function MerchantHome() {
           </View>
         )}
 
-        {activeSectionTab === 'riderCash' && (
-          <View>
-            <View style={[styles.gridContainer, { marginBottom: 16 }]}>
-              <View style={[styles.gridCard, { width: '48%' }]}>
-                <Text style={styles.gridLabel}>Rider Cash Holding</Text>
-                <Text style={[styles.gridValue, { color: '#E53935' }]}>
-                  ₹{Math.round(analytics?.codSummary?.unsubmittedCodAmount || 0)}
-                </Text>
-                <Text style={styles.gridSubtext}>COD cash yet to reach you</Text>
-              </View>
-              
-              <View style={[styles.gridCard, { width: '48%' }]}>
-                <Text style={styles.gridLabel}>Rider Cash Handed Over</Text>
-                <Text style={[styles.gridValue, { color: Colors.success }]}>
-                  ₹{Math.round(analytics?.codSummary?.submittedCodAmount || 0)}
-                </Text>
-                <Text style={styles.gridSubtext}>COD cash submitted successfully</Text>
-              </View>
-            </View>
 
-            <Text style={{ fontSize: 13, fontWeight: '700', color: '#2D2D2D', marginBottom: 8 }}>Riders Holding Cash</Text>
-            {!analytics?.codSummary?.riderHoldings || analytics.codSummary.riderHoldings.length === 0 ? (
-              <View style={{ padding: 16, backgroundColor: '#F9F9F9', borderRadius: 12, alignItems: 'center' }}>
-                <Text style={{ color: Colors.textSecondary, fontSize: 13 }}>No riders holding cash for your store.</Text>
-              </View>
-            ) : (
-              analytics.codSummary.riderHoldings.map((riderGroup: any) => (
-                <View key={riderGroup.riderId} style={styles.riderCard}>
-                  <View style={styles.riderHeader}>
-                    <View>
-                      <Text style={styles.riderName}>{riderGroup.riderName}</Text>
-                      <Text style={styles.riderPhone}>{riderGroup.riderPhone}</Text>
-                    </View>
-                    <Text style={styles.riderAmount}>₹{Math.round(riderGroup.cashAmount)}</Text>
-                  </View>
-                  <Text style={{ fontSize: 10, color: '#6F6F6F', marginBottom: 4 }}>
-                    Pending payments for: {riderGroup.payments.map((p: any) => `#${p.orderNumber}`).join(', ')}
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.verifyButton}
-                    onPress={() => handleVerifyCodReceipt(riderGroup)}
-                    disabled={isVerifying}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.verifyButtonText}>
-                      {isVerifying ? "Verifying..." : "Confirm Cash Received"}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              ))
-            )}
-          </View>
-        )}
 
         {activeSectionTab === 'products' && (
           <View>
@@ -423,6 +407,18 @@ export default function MerchantHome() {
               </View>
             </View>
 
+            {/* Request Withdrawal Button */}
+            {(analytics?.financials?.netBalance || 0) < 0 && (
+              <TouchableOpacity 
+                style={styles.withdrawButton} 
+                onPress={() => setShowWithdrawModal(true)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="cash-outline" size={18} color="#000000" style={{ marginRight: 6 }} />
+                <Text style={styles.withdrawButtonText}>Request Withdrawal</Text>
+              </TouchableOpacity>
+            )}
+
             {/* Payout Totals */}
             <View style={[styles.gridContainer, { marginBottom: 16 }]}>
               <View style={[styles.gridCard, { width: '48%' }]}>
@@ -476,6 +472,52 @@ export default function MerchantHome() {
                   )}
                   {tx.notes && (
                     <Text style={styles.ledgerNotes}>Note: {tx.notes}</Text>
+                  )}
+                </View>
+              ))
+            )}
+
+            {/* Withdrawal Requests Log */}
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#2D2D2D', marginTop: 16, marginBottom: 8 }}>Withdrawal Requests</Text>
+            {withdrawalHistory.length === 0 ? (
+              <View style={{ padding: 16, backgroundColor: '#F9F9F9', borderRadius: 12, alignItems: 'center', marginBottom: 16 }}>
+                <Text style={{ color: '#6F6F6F', fontSize: 13 }}>No past withdrawal requests found.</Text>
+              </View>
+            ) : (
+              withdrawalHistory.map((tx: any) => (
+                <View key={tx._id} style={[styles.ledgerCard, { marginBottom: 12 }]}>
+                  <View style={styles.ledgerHeader}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={styles.ledgerType}>
+                        {tx.paymentDetails.method === 'UPI' ? `Withdrawal to UPI (${tx.paymentDetails.upiId})` : `Withdrawal to Bank (${tx.paymentDetails.bankName})`}
+                      </Text>
+                      <Text style={styles.ledgerDate}>
+                        {new Date(tx.createdAt).toLocaleDateString('en-IN', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric'
+                        })}
+                      </Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={[styles.ledgerAmount, { color: '#C62828', marginBottom: 4 }]}>
+                        -₹{Math.round(tx.amount)}
+                      </Text>
+                      <View style={[
+                        { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+                        tx.status === 'Approved' ? { backgroundColor: '#E8F5E9' } : tx.status === 'Rejected' ? { backgroundColor: '#FFEBEE' } : { backgroundColor: '#FFF9C4' }
+                      ]}>
+                        <Text style={[
+                          { fontSize: 10, fontWeight: '700' },
+                          tx.status === 'Approved' ? { color: '#2E7D32' } : tx.status === 'Rejected' ? { color: '#C62828' } : { color: '#F57F17' }
+                        ]}>
+                          {tx.status}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                  {tx.statusNotes && (
+                    <Text style={styles.ledgerNotes}>Note: {tx.statusNotes}</Text>
                   )}
                 </View>
               ))
@@ -619,6 +661,117 @@ export default function MerchantHome() {
           </View>
         </View>
       )}
+
+      {/* Withdrawal Request Modal */}
+      <Modal
+        visible={showWithdrawModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowWithdrawModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Request Payout / Withdrawal</Text>
+            
+            <Text style={styles.inputLabel}>Available Balance: ₹{Math.abs(Math.round(analytics?.financials?.netBalance || 0))}</Text>
+            
+            <Text style={styles.inputLabel}>Amount to Withdraw (₹)</Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Enter amount"
+              keyboardType="numeric"
+              value={withdrawAmount}
+              onChangeText={setWithdrawAmount}
+            />
+
+            <Text style={styles.inputLabel}>Payout Method</Text>
+            <View style={styles.methodContainer}>
+              <TouchableOpacity
+                style={[styles.methodButton, withdrawMethod === 'UPI' && styles.methodButtonActive]}
+                onPress={() => setWithdrawMethod('UPI')}
+              >
+                <Text style={[styles.methodButtonText, withdrawMethod === 'UPI' && styles.methodButtonTextActive]}>UPI</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.methodButton, withdrawMethod === 'BankTransfer' && styles.methodButtonActive]}
+                onPress={() => setWithdrawMethod('BankTransfer')}
+              >
+                <Text style={[styles.methodButtonText, withdrawMethod === 'BankTransfer' && styles.methodButtonTextActive]}>Bank Transfer</Text>
+              </TouchableOpacity>
+            </View>
+
+            {withdrawMethod === 'UPI' ? (
+              <View>
+                <Text style={styles.inputLabel}>UPI ID</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="e.g. name@upi"
+                  autoCapitalize="none"
+                  value={upiId}
+                  onChangeText={setUpiId}
+                />
+              </View>
+            ) : (
+              <View>
+                <Text style={styles.inputLabel}>Account Holder Name</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Full Name"
+                  value={accountHolderName}
+                  onChangeText={setAccountHolderName}
+                />
+                
+                <Text style={styles.inputLabel}>Bank Name</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Bank Name"
+                  value={bankName}
+                  onChangeText={setBankName}
+                />
+
+                <Text style={styles.inputLabel}>Account Number</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Account Number"
+                  keyboardType="numeric"
+                  value={accountNumber}
+                  onChangeText={setAccountNumber}
+                />
+
+                <Text style={styles.inputLabel}>IFSC Code</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="IFSC Code"
+                  autoCapitalize="characters"
+                  value={ifscCode}
+                  onChangeText={setIfscCode}
+                />
+              </View>
+            )}
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={() => setShowWithdrawModal(false)}
+                disabled={isSubmittingWithdraw}
+              >
+                <Text style={styles.modalCancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={styles.modalSubmitButton}
+                onPress={handleRequestWithdrawal}
+                disabled={isSubmittingWithdraw}
+              >
+                <Text style={styles.modalSubmitButtonText}>
+                  {isSubmittingWithdraw ? 'Submitting...' : 'Submit Request'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1075,5 +1228,114 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#F5F5F5',
     paddingTop: 4,
+  },
+  withdrawButton: {
+    backgroundColor: '#FFD700',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  withdrawButtonText: {
+    color: '#000000',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#212121',
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6F6F6F',
+    marginBottom: 4,
+    marginTop: 10,
+  },
+  textInput: {
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 14,
+    color: '#212121',
+    backgroundColor: '#F9F9F9',
+  },
+  methodContainer: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 10,
+    marginTop: 6,
+  },
+  methodButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+    backgroundColor: '#F9F9F9',
+  },
+  methodButtonActive: {
+    borderColor: '#FFD700',
+    backgroundColor: '#FFFDE7',
+  },
+  methodButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#6F6F6F',
+  },
+  methodButtonTextActive: {
+    color: '#FFC107',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 20,
+  },
+  modalCancelButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    alignItems: 'center',
+  },
+  modalCancelButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#6F6F6F',
+  },
+  modalSubmitButton: {
+    flex: 1,
+    backgroundColor: '#FFD700',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalSubmitButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#000000',
   },
 });

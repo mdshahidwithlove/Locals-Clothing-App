@@ -173,3 +173,14 @@ export async function createStoreSettlement(storeId: string, data: {
   const res = await api.post(`/api/v1/admin/stores/${storeId}/settlements`, data);
   return res.data.data;
 }
+
+// ─── Withdrawals ────────────────────────────────────────────────────────────
+export async function fetchAdminWithdrawals(params?: { status?: string }) {
+  const res = await api.get('/api/v1/admin/withdrawals', { params });
+  return res.data.requests;
+}
+
+export async function processAdminWithdrawal(id: string, data: { status: 'Approved' | 'Rejected'; statusNotes?: string }) {
+  const res = await api.put(`/api/v1/admin/withdrawals/${id}/status`, data);
+  return res.data.withdrawal;
+}

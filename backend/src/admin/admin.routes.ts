@@ -26,6 +26,8 @@ import {
   settleDeliveryPartnerCash,
   getStoreSettlements,
   createStoreSettlement,
+  getAdminWithdrawals,
+  processAdminWithdrawal,
 } from './admin.controller';
 import { getSettings, updateSettings } from './settingsController';
 import { isAdminAuthenticated } from './admin.middleware';
@@ -85,5 +87,9 @@ router.get('/notifications', isAdminAuthenticated, getAdminNotifications);
 // Settings
 router.get('/settings', isAdminAuthenticated, getSettings);
 router.patch('/settings', isAdminAuthenticated, updateSettings);
+
+// Withdrawals
+router.get('/withdrawals', isAdminAuthenticated, getAdminWithdrawals);
+router.put('/withdrawals/:id/status', isAdminAuthenticated, processAdminWithdrawal);
 
 export default router;

@@ -1785,4 +1785,57 @@ export class AdminService {
       }
     };
   }
+
+  // Get all user withdrawal requests
+  static async getAllWithdrawals(status?: string) {
+    const WithdrawalRequest = require('../Models/withdrawalRequestModel').default;
+    const filter: any = {};
+    if (status) {
+      filter.status = status;
+    }
+    return await WithdrawalRequest.find(filter)
+      .populate("user", "name phone email role")
+      .sort({ createdAt: -1 });
+  }
+
+  // Update withdrawal request status
+  static async updateWithdrawalStatus(id: string, status: "Approved" | "Rejected" | "Pending", statusNotes?: string, adminId?: string) {
+    const WithdrawalRequest = require('../Models/withdrawalRequestModel').default;
+    const StoreSettlementModel = require('../Models/storeSettlementModel').default;
+    const StoreModel = require('../Models/storeModel').default;
+    const mongoose = require('mongoose');
+
+    const withdrawal = await WithdrawalRequest.findById(id).populate("user");
+    if (!withdrawal) {
+      throw new Error('Withdrawal request not found');
+    }
+
+    withdrawal.status = status;
+    if (statusNotes !== undefined) {
+      withdrawal.statusNotes = statusNotes;
+    }
+
+    await withdrawal.save();
+
+    // If approved and the user is a merchant, record it as a store payout settlement in the ledger
+    if (status === 'Approved') {
+      if (withdrawal.user.role === 'Merchant') {
+        const store = await StoreModel.findOne({ merchantId: withdrawal.user._id });
+        if (store) {
+          const settlement = new StoreSettlementModel({
+            store: store._id,
+            amount: withdrawal.amount,
+            type: 'Payout',
+            paymentMethod: withdrawal.paymentDetails.method === 'UPI' ? 'UPI' : 'BankTransfer',
+            transactionReference: `WITHDRAW-${withdrawal._id.toString().slice(-6).toUpperCase()}`,
+            notes: `Approved withdrawal. ${statusNotes || ''}`,
+            settledBy: adminId ? new mongoose.Types.ObjectId(adminId) : new mongoose.Types.ObjectId(withdrawal.user._id)
+          });
+          await settlement.save();
+        }
+      }
+    }
+
+    return withdrawal;
+  }
 }

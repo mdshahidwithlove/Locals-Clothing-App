@@ -21,7 +21,16 @@ import type { CartItem as CartItemType } from '@/contexts/CartContext';
 import SizeSelectorModal from '@/components/ui/SizeSelectorModal';
 import AddressSelector from '@/components/user/AddressSelector';
 import PaymentMethodModal from '@/components/user/PaymentMethodModal';
-import RazorpayCheckout from 'react-native-razorpay';
+let RazorpayCheckout: any = null;
+try {
+  RazorpayCheckout = require('react-native-razorpay');
+  // If the import returns the default export on some platforms
+  if (RazorpayCheckout && RazorpayCheckout.default) {
+    RazorpayCheckout = RazorpayCheckout.default;
+  }
+} catch (e) {
+  console.warn('Razorpay module not loaded (Expo Go):', e);
+}
 
 // Helper: format INR without decimals across the app UI
 const formatINR = (value: number) => Math.round(value).toLocaleString('en-IN', { maximumFractionDigits: 0 });
@@ -167,6 +176,24 @@ export default function CartScreen() {
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [processingPayment, setProcessingPayment] = useState(false);
   
+  const [platformFeeType, setPlatformFeeType] = useState<'flat' | 'percentage'>('flat');
+  const [platformFeeValue, setPlatformFeeValue] = useState<number>(5);
+
+  useEffect(() => {
+    const fetchPlatformFee = async () => {
+      try {
+        const response = await apiClient.get('/api/v1/user/platform-fee');
+        if (response.data.success) {
+          setPlatformFeeType(response.data.feeType);
+          setPlatformFeeValue(response.data.feeValue);
+        }
+      } catch (error) {
+        console.error('Error fetching platform fee config:', error);
+      }
+    };
+    fetchPlatformFee();
+  }, []);
+
   const updateQuantity = (productId: string, newQuantity: number, size?: string) => {
     updateQty(productId, newQuantity, size);
   };
@@ -180,8 +207,22 @@ export default function CartScreen() {
     return items.length * 50;
   };
 
+  const calculatePlatformFee = () => {
+    const storeIds = Object.keys(ordersByStore);
+    let totalFee = 0;
+    storeIds.forEach(storeId => {
+      const storeTotal = ordersByStore[storeId].totalAmount;
+      if (platformFeeType === 'percentage') {
+        totalFee += Math.round(storeTotal * (platformFeeValue / 100));
+      } else {
+        totalFee += Math.round(platformFeeValue);
+      }
+    });
+    return totalFee;
+  };
+
   const calculateGrandTotal = () => {
-    return calculateTotal() + calculateDeliveryFee();
+    return calculateTotal() + calculateDeliveryFee() + calculatePlatformFee();
   };
 
   // Group items by store for display
@@ -356,6 +397,15 @@ export default function CartScreen() {
         },
         theme: { color: Colors.primary }
       };
+
+      if (!RazorpayCheckout) {
+        Alert.alert(
+          'Payment Feature Unavailable',
+          'Razorpay payments are not supported in Expo Go. Please use the standalone APK build to test payment options.',
+          [{ text: 'OK', onPress: () => setProcessingPayment(false) }]
+        );
+        return;
+      }
 
       RazorpayCheckout.open(options as any)
         .then(async (data: any) => {
@@ -582,6 +632,14 @@ export default function CartScreen() {
                 <Ionicons name="bicycle" size={16} color={Colors.textSecondary} style={{ marginLeft: 4 }} />
               </View>
               <Text style={styles.summaryValue}>₹{formatINR(calculateDeliveryFee())}</Text>
+            </View>
+
+            <View style={styles.summaryRow}>
+              <View style={styles.summaryLabelWithIcon}>
+                <Text style={styles.summaryLabel}>Platform Fee</Text>
+                <Ionicons name="card" size={16} color={Colors.textSecondary} style={{ marginLeft: 4 }} />
+              </View>
+              <Text style={styles.summaryValue}>₹{formatINR(calculatePlatformFee())}</Text>
             </View>
             
             <View style={styles.divider} />

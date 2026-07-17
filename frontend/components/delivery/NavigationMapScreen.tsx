@@ -92,6 +92,15 @@ const NavigationMapScreen: React.FC = () => {
         };
       }
 
+      // Pattern 4: /dir/.../lat,lng
+      const dirMatch = mapLink.match(/\/dir\/[^\/]+\/(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+      if (dirMatch) {
+        return {
+          lat: parseFloat(dirMatch[1]),
+          lng: parseFloat(dirMatch[2])
+        };
+      }
+
       return null;
     } catch (error) {
       console.error('Error extracting coordinates from map link:', error);
@@ -280,7 +289,20 @@ const NavigationMapScreen: React.FC = () => {
       // Try extracting from mapLink first (for stores)
       if ((pickupLocation as any).mapLink) {
         console.log('Extracting coordinates from pickup mapLink...');
-        pickupCoords = extractCoordinatesFromMapLink((pickupLocation as any).mapLink);
+        let mapLink = (pickupLocation as any).mapLink;
+        if (mapLink.includes('maps.app.goo.gl') || mapLink.includes('goo.gl/maps')) {
+          try {
+            console.log('Resolving short URL on client:', mapLink);
+            const res = await fetch(mapLink, { method: 'GET', redirect: 'follow' });
+            if (res.url) {
+              mapLink = res.url;
+              console.log('Resolved short URL to:', mapLink);
+            }
+          } catch (e) {
+            console.warn('Failed to resolve short URL on client:', e);
+          }
+        }
+        pickupCoords = extractCoordinatesFromMapLink(mapLink);
         console.log('Extracted from mapLink:', pickupCoords);
       }
       

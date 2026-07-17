@@ -61,6 +61,7 @@ export async function markCodCollected(req: Request, res: Response) {
       });
     }
 
+    payment.paymentStatus = "Completed";
     payment.codCollectedBy = user._id;
     payment.codCollectedAt = new Date();
     payment.transactionDate = new Date();

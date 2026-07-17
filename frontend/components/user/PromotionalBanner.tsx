@@ -300,6 +300,7 @@ const styles = StyleSheet.create({
     top: 50,
     left: 0,
     right: 0,
+    height: 50,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
@@ -319,6 +320,7 @@ const styles = StyleSheet.create({
     top: 105,
     left: 0,
     right: 0,
+    height: 60,
     paddingHorizontal: 16,
     paddingBottom: 8,
     zIndex: 20, // Highest z-index for search bar

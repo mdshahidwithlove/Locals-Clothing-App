@@ -1,8 +1,20 @@
 import express from 'express';
 import { onboarding, verifyOtp, getProfile, registerUser, loginUser, completeProfile, updateProfile, getUserStats, deleteAccount, savePushToken, getUserNotifications, markNotificationRead } from '../controllers/usercontroller';
 import { isAuthenticated } from '../middleware/auth';
+import { getConfig } from '../services/configService';
 
 const userRoute = express.Router();
+
+// Get public platform fee config
+userRoute.get('/platform-fee', (req, res) => {
+  const feeType = getConfig("PLATFORM_FEE_TYPE", "flat");
+  const feeValue = getConfig("PLATFORM_FEE_VALUE", "5");
+  res.json({
+    success: true,
+    feeType,
+    feeValue: parseFloat(feeValue) || 0
+  });
+});
 
 // Send OTP for phone verification
 userRoute.post('/onboarding', onboarding);

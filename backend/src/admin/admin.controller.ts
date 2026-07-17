@@ -881,3 +881,51 @@ export async function createStoreSettlement(req: CustomRequest, res: Response): 
     });
   }
 }
+
+export async function getAdminWithdrawals(req: Request, res: Response): Promise<Response> {
+  try {
+    const status = req.query.status as string;
+    const requests = await AdminService.getAllWithdrawals(status);
+    return res.status(200).json({
+      success: true,
+      requests
+    });
+  } catch (error: any) {
+    console.error('Fetch withdrawals error:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to fetch withdrawal requests',
+    });
+  }
+}
+
+export async function processAdminWithdrawal(req: CustomRequest, res: Response): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const { status, statusNotes } = req.body;
+    const adminId = req.user?._id;
+
+    if (!["Approved", "Rejected", "Pending"].includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid status' });
+    }
+
+    const withdrawal = await AdminService.updateWithdrawalStatus(
+      id,
+      status,
+      statusNotes,
+      adminId?.toString()
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: `Withdrawal request status updated to ${status} successfully`,
+      withdrawal
+    });
+  } catch (error: any) {
+    console.error('Process withdrawal error:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to process withdrawal request',
+    });
+  }
+}

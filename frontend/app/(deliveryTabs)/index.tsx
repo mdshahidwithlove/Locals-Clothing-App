@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Alert, Modal, TextInput, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,6 +25,81 @@ export default function DeliveryHome() {
   const [refreshing, setRefreshing] = useState(false);
   const [recentDeliveries, setRecentDeliveries] = useState<any[]>([]);
   const [isSettling, setIsSettling] = useState(false);
+
+  // Withdrawal states
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [withdrawMethod, setWithdrawMethod] = useState<'UPI' | 'BankTransfer'>('UPI');
+  const [upiId, setUpiId] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [ifscCode, setIfscCode] = useState('');
+  const [accountHolderName, setAccountHolderName] = useState('');
+  const [isSubmittingWithdraw, setIsSubmittingWithdraw] = useState(false);
+  const [withdrawalHistory, setWithdrawalHistory] = useState<any[]>([]);
+
+  const handleRequestWithdrawal = async () => {
+    const amt = parseFloat(withdrawAmount);
+    if (!amt || amt <= 0) {
+      Alert.alert("Error", "Please enter a valid amount.");
+      return;
+    }
+    
+    // Calculate withdrawable balance
+    const totalEarnings = stats.totalEarnings || 0;
+    const cashInHand = stats.cashInHand || 0;
+    const withdrawnSum = withdrawalHistory
+      .filter((w: any) => w.status !== 'Rejected')
+      .reduce((sum: number, w: any) => sum + w.amount, 0);
+    const maxWithdrawable = Math.max(0, totalEarnings - cashInHand - withdrawnSum);
+    
+    if (amt > maxWithdrawable) {
+      Alert.alert("Error", `Cannot request more than available balance (₹${Math.round(maxWithdrawable)}).`);
+      return;
+    }
+    
+    if (withdrawMethod === 'UPI' && !upiId.trim()) {
+      Alert.alert("Error", "Please enter your UPI ID.");
+      return;
+    }
+    
+    if (withdrawMethod === 'BankTransfer') {
+      if (!bankName.trim() || !accountNumber.trim() || !ifscCode.trim() || !accountHolderName.trim()) {
+        Alert.alert("Error", "Please fill in all bank details.");
+        return;
+      }
+    }
+
+    try {
+      setIsSubmittingWithdraw(true);
+      const paymentDetails = withdrawMethod === 'UPI' 
+        ? { method: 'UPI', upiId: upiId.trim() }
+        : { 
+            method: 'BankTransfer', 
+            bankName: bankName.trim(), 
+            accountNumber: accountNumber.trim(), 
+            ifscCode: ifscCode.trim(), 
+            accountHolderName: accountHolderName.trim() 
+          };
+
+      const res = await apiClient.post('/api/v1/withdrawals/request', {
+        amount: amt,
+        paymentDetails
+      });
+
+      if (res.data?.success) {
+        Alert.alert("Success", "Withdrawal request submitted successfully!");
+        setShowWithdrawModal(false);
+        setWithdrawAmount('');
+        loadDeliveryStats();
+      }
+    } catch (error: any) {
+      console.error('Error requesting withdrawal:', error);
+      Alert.alert("Error", error?.response?.data?.message || error.message || "Failed to request withdrawal.");
+    } finally {
+      setIsSubmittingWithdraw(false);
+    }
+  };
 
   const handleSettleOnline = async () => {
     const amount = Math.round(stats.cashInHand || 0);
@@ -72,6 +147,15 @@ export default function DeliveryHome() {
       const recentsResp = await apiClient.get('/api/v1/delivery', { params: { page: 1, limit: 5 } });
       if (recentsResp.data?.success) {
         setRecentDeliveries(recentsResp.data.deliveries || []);
+      }
+      // Load withdrawal history
+      try {
+        const res = await apiClient.get('/api/v1/withdrawals/history');
+        if (res.data?.success) {
+          setWithdrawalHistory(res.data.history || []);
+        }
+      } catch (error) {
+        console.error('Error loading withdrawal history:', error);
       }
     } catch (error) {
       console.error('Error loading delivery stats:', error);
@@ -248,7 +332,73 @@ export default function DeliveryHome() {
               </Text>
             </TouchableOpacity>
           ) : null}
+
+          {/* Withdrawable balance and request button */}
+          <View style={{ height: 1, backgroundColor: '#EEEEEE', marginVertical: 12 }} />
+          
+          <View style={[styles.settlementRow, { marginBottom: 10, borderBottomWidth: 0 }]}>
+            <Text style={styles.settlementLabel}>Withdrawable Earnings Balance</Text>
+            <Text style={[styles.settlementValue, { color: '#2E7D32' }]}>
+              ₹{Math.round(Math.max(0, (stats.totalEarnings || 0) - (stats.cashInHand || 0) - withdrawalHistory.filter((w: any) => w.status !== 'Rejected').reduce((sum: number, w: any) => sum + w.amount, 0)))}
+            </Text>
+          </View>
+
+          {Math.max(0, (stats.totalEarnings || 0) - (stats.cashInHand || 0) - withdrawalHistory.filter((w: any) => w.status !== 'Rejected').reduce((sum: number, w: any) => sum + w.amount, 0)) > 0 ? (
+            <TouchableOpacity 
+              style={[styles.settleButton, { backgroundColor: '#FFD700', marginTop: 4 }]} 
+              onPress={() => setShowWithdrawModal(true)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="cash-outline" size={18} color="#000000" style={{ marginRight: 6 }} />
+              <Text style={[styles.settleButtonText, { color: '#000000' }]}>
+                Request Earnings Withdrawal
+              </Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
+
+        {withdrawalHistory.length > 0 && (
+          <View style={{ marginTop: 16 }}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: '#2D2D2D', marginBottom: 8 }}>Withdrawal History</Text>
+            {withdrawalHistory.map((tx: any) => (
+              <View key={tx._id} style={styles.historyCard}>
+                <View style={styles.historyHeader}>
+                  <View style={{ flex: 1, marginRight: 8 }}>
+                    <Text style={styles.historyType}>
+                      {tx.paymentDetails.method === 'UPI' ? `Withdrawal to UPI (${tx.paymentDetails.upiId})` : `Withdrawal to Bank (${tx.paymentDetails.bankName})`}
+                    </Text>
+                    <Text style={styles.historyDate}>
+                      {new Date(tx.createdAt).toLocaleDateString('en-IN', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric'
+                      })}
+                    </Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={styles.historyAmount}>
+                      -₹{Math.round(tx.amount)}
+                    </Text>
+                    <View style={[
+                      styles.historyBadge,
+                      tx.status === 'Approved' ? { backgroundColor: '#E8F5E9' } : tx.status === 'Rejected' ? { backgroundColor: '#FFEBEE' } : { backgroundColor: '#FFF9C4' }
+                    ]}>
+                      <Text style={[
+                        styles.historyBadgeText,
+                        tx.status === 'Approved' ? { color: '#2E7D32' } : tx.status === 'Rejected' ? { color: '#C62828' } : { color: '#F57F17' }
+                      ]}>
+                        {tx.status}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+                {tx.statusNotes && (
+                  <Text style={styles.historyNotes}>Note: {tx.statusNotes}</Text>
+                )}
+              </View>
+            ))}
+          </View>
+        )}
       </View>
 
       {/* Recent Activity */}
@@ -296,6 +446,119 @@ export default function DeliveryHome() {
         </View>
       </View>
     </ScrollView>
+
+    {/* Withdrawal Request Modal */}
+    <Modal
+      visible={showWithdrawModal}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={() => setShowWithdrawModal(false)}
+    >
+      <View style={styles.withdrawModalContainer}>
+        <View style={styles.withdrawModalContent}>
+          <Text style={styles.withdrawModalTitle}>Request Earnings Withdrawal</Text>
+          
+          <Text style={styles.withdrawInputLabel}>
+            Available to Withdraw: ₹{Math.round(Math.max(0, (stats.totalEarnings || 0) - (stats.cashInHand || 0) - withdrawalHistory.filter((w: any) => w.status !== 'Rejected').reduce((sum: number, w: any) => sum + w.amount, 0)))}
+          </Text>
+          
+          <Text style={styles.withdrawInputLabel}>Amount to Withdraw (₹)</Text>
+          <TextInput
+            style={styles.withdrawTextInput}
+            placeholder="Enter amount"
+            keyboardType="numeric"
+            value={withdrawAmount}
+            onChangeText={setWithdrawAmount}
+          />
+
+          <Text style={styles.withdrawInputLabel}>Payout Method</Text>
+          <View style={styles.withdrawMethodContainer}>
+            <TouchableOpacity
+              style={[styles.withdrawMethodButton, withdrawMethod === 'UPI' && styles.withdrawMethodButtonActive]}
+              onPress={() => setWithdrawMethod('UPI')}
+            >
+              <Text style={[styles.withdrawMethodButtonText, withdrawMethod === 'UPI' && styles.withdrawMethodButtonTextActive]}>UPI</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.withdrawMethodButton, withdrawMethod === 'BankTransfer' && styles.withdrawMethodButtonActive]}
+              onPress={() => setWithdrawMethod('BankTransfer')}
+            >
+              <Text style={[styles.withdrawMethodButtonText, withdrawMethod === 'BankTransfer' && styles.withdrawMethodButtonTextActive]}>Bank Transfer</Text>
+            </TouchableOpacity>
+          </View>
+
+          {withdrawMethod === 'UPI' ? (
+            <View>
+              <Text style={styles.withdrawInputLabel}>UPI ID</Text>
+              <TextInput
+                style={styles.withdrawTextInput}
+                placeholder="e.g. name@upi"
+                autoCapitalize="none"
+                value={upiId}
+                onChangeText={setUpiId}
+              />
+            </View>
+          ) : (
+            <View>
+              <Text style={styles.withdrawInputLabel}>Account Holder Name</Text>
+              <TextInput
+                style={styles.withdrawTextInput}
+                placeholder="Full Name"
+                value={accountHolderName}
+                onChangeText={setAccountHolderName}
+              />
+              
+              <Text style={styles.withdrawInputLabel}>Bank Name</Text>
+              <TextInput
+                style={styles.withdrawTextInput}
+                placeholder="Bank Name"
+                value={bankName}
+                onChangeText={setBankName}
+              />
+
+              <Text style={styles.withdrawInputLabel}>Account Number</Text>
+              <TextInput
+                style={styles.withdrawTextInput}
+                placeholder="Account Number"
+                keyboardType="numeric"
+                value={accountNumber}
+                onChangeText={setAccountNumber}
+              />
+
+              <Text style={styles.withdrawInputLabel}>IFSC Code</Text>
+              <TextInput
+                style={styles.withdrawTextInput}
+                placeholder="IFSC Code"
+                autoCapitalize="characters"
+                value={ifscCode}
+                onChangeText={setIfscCode}
+              />
+            </View>
+          )}
+
+          <View style={styles.withdrawModalActions}>
+            <TouchableOpacity
+              style={styles.withdrawModalCancelButton}
+              onPress={() => setShowWithdrawModal(false)}
+              disabled={isSubmittingWithdraw}
+            >
+              <Text style={styles.withdrawModalCancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.withdrawModalSubmitButton}
+              onPress={handleRequestWithdrawal}
+              disabled={isSubmittingWithdraw}
+            >
+              <Text style={styles.withdrawModalSubmitButtonText}>
+                {isSubmittingWithdraw ? 'Submitting...' : 'Submit Request'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -624,5 +887,147 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
+  },
+  withdrawModalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  withdrawModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  withdrawModalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#212121',
+    marginBottom: 16,
+  },
+  withdrawInputLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6F6F6F',
+    marginBottom: 4,
+    marginTop: 10,
+  },
+  withdrawTextInput: {
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 14,
+    color: '#212121',
+    backgroundColor: '#F9F9F9',
+  },
+  withdrawMethodContainer: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 10,
+    marginTop: 6,
+  },
+  withdrawMethodButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+    backgroundColor: '#F9F9F9',
+  },
+  withdrawMethodButtonActive: {
+    borderColor: '#FFD700',
+    backgroundColor: '#FFFDE7',
+  },
+  withdrawMethodButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#6F6F6F',
+  },
+  withdrawMethodButtonTextActive: {
+    color: '#FFC107',
+  },
+  withdrawModalActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 20,
+  },
+  withdrawModalCancelButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    alignItems: 'center',
+  },
+  withdrawModalCancelButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#6F6F6F',
+  },
+  withdrawModalSubmitButton: {
+    flex: 1,
+    backgroundColor: '#FFD700',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  withdrawModalSubmitButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#000000',
+  },
+  historyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
+    marginBottom: 8,
+  },
+  historyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  historyType: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2D2D2D',
+  },
+  historyDate: {
+    fontSize: 10,
+    color: '#999999',
+    marginTop: 2,
+  },
+  historyAmount: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#C62828',
+  },
+  historyBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginTop: 4,
+  },
+  historyBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  historyNotes: {
+    fontSize: 11,
+    color: '#757575',
+    fontStyle: 'italic',
+    marginTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: '#F5F5F5',
+    paddingTop: 4,
   },
 });

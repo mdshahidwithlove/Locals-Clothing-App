@@ -81,23 +81,9 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
     }
   };
 
-  const openMapPicker = async () => {
-    try {
-      // Always fetch current location; no defaults
-      const loc = await getCurrentLocation();
-      if (loc) {
-        const initial: Region = {
-          latitude: loc.latitude,
-          longitude: loc.longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        };
-        setMapRegion(initial);
-      } else {
-        setMapRegion(null);
-      }
-      setMapVisible(true);
-    } catch {}
+  const openMapPicker = () => {
+    setIsModalVisible(false);
+    setMapVisible(true);
   };
 
   const beginEditAddress = (index: number, value: string) => {
@@ -344,10 +330,25 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
                         </View>
                       ) : (
                         <View style={styles.savedAddressContent}>
-                          <View style={[styles.iconCircle, styles.smallIconCircle]}>
-                            <Ionicons name="home" size={18} color={Colors.primary} />
-                          </View>
-                          <Text style={styles.savedAddressText} numberOfLines={2}>{item}</Text>
+                          <TouchableOpacity
+                            style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
+                            activeOpacity={0.7}
+                            onPress={() => {
+                              const cityPart = item.split(',').map((p) => p.trim())[2] || item;
+                              handleLocationSelect({
+                                id: `saved_${index}`,
+                                name: cityPart,
+                                city: cityPart,
+                                state: '',
+                                country: 'India',
+                              });
+                            }}
+                          >
+                            <View style={[styles.iconCircle, styles.smallIconCircle, { marginRight: 8 }]}>
+                              <Ionicons name="home" size={18} color={Colors.primary} />
+                            </View>
+                            <Text style={styles.savedAddressText} numberOfLines={2}>{item}</Text>
+                          </TouchableOpacity>
                           <View style={styles.addressActions}>
                             <TouchableOpacity 
                               onPress={() => beginEditAddress(index, item)} 
@@ -386,7 +387,10 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
         <LocationPickerScreen
           initialRegion={mapRegion || undefined}
           title="Choose Location"
-          onClose={() => setMapVisible(false)}
+          onClose={() => {
+            setMapVisible(false);
+            setIsModalVisible(true);
+          }}
           onConfirm={async ({ latitude, longitude, formattedAddress }) => {
             try {
               const nextAddresses = [...(user?.addresses || []), formattedAddress];
@@ -419,7 +423,10 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
 
       <ManualAddressScreen
         visible={manualAddressVisible}
-        onClose={() => setManualAddressVisible(false)}
+        onClose={() => {
+          setManualAddressVisible(false);
+          setIsModalVisible(true);
+        }}
         title="Enter Address"
         isSaving={isSaving}
         showLocationActions={false}

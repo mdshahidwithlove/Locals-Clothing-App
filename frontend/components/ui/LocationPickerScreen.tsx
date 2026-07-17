@@ -19,7 +19,8 @@ const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
   onConfirm 
 }) => {
   const { getCurrentLocation, reverseGeocode, currentLocation } = useLocation();
-  const [region, setRegion] = useState<Region | null>(null);
+  const [mapInitialRegion, setMapInitialRegion] = useState<Region | null>(null);
+  const [currentRegion, setCurrentRegion] = useState<Region | null>(null);
   const [address, setAddress] = useState<string>('');
   const [isGeocoding, setIsGeocoding] = useState<boolean>(false);
   const [isBootstrapping, setIsBootstrapping] = useState<boolean>(true);
@@ -54,26 +55,31 @@ const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
   useEffect(() => {
     const bootstrap = async () => {
       try {
-        // Always start from user current location
-        let lat = currentLocation?.latitude;
-        let lng = currentLocation?.longitude;
-        if (lat == null || lng == null) {
-          const loc = await getCurrentLocation();
-          lat = loc?.latitude;
-          lng = loc?.longitude;
+        // Default to Bengaluru if GPS lookup fails or permission denied
+        let lat = currentLocation?.latitude ?? 12.9716;
+        let lng = currentLocation?.longitude ?? 77.5946;
+        if (currentLocation?.latitude == null) {
+          try {
+            const loc = await getCurrentLocation();
+            if (loc) {
+              lat = loc.latitude;
+              lng = loc.longitude;
+            }
+          } catch (e) {
+            console.warn('Location bootstrap error:', e);
+          }
         }
-        if (lat != null && lng != null) {
-          const next: Region = {
-            latitude: lat,
-            longitude: lng,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
-          };
-          setRegion(next);
-          setIsGeocoding(true);
-          const addr = await reverseGeocode(next.latitude, next.longitude);
-          setAddress(addr?.formattedAddress || '');
-        }
+        const next: Region = {
+          latitude: lat,
+          longitude: lng,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        };
+        setMapInitialRegion(next);
+        setCurrentRegion(next);
+        setIsGeocoding(true);
+        const addr = await reverseGeocode(lat, lng);
+        setAddress(addr?.formattedAddress || '');
       } finally {
         setIsBootstrapping(false);
         setIsGeocoding(false);
@@ -83,7 +89,7 @@ const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
   }, [currentLocation, getCurrentLocation, reverseGeocode]);
 
   const onRegionChangeComplete = async (next: Region) => {
-    setRegion(next);
+    setCurrentRegion(next);
     setIsGeocoding(true);
     try {
       const addr = await reverseGeocode(next.latitude, next.longitude);
@@ -106,7 +112,7 @@ const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
           latitudeDelta: 0.01,
           longitudeDelta: 0.01,
         };
-        setRegion(nextRegion);
+        setCurrentRegion(nextRegion);
         mapRef.current?.animateToRegion(nextRegion, 1000);
         
         setIsGeocoding(true);
@@ -125,10 +131,10 @@ const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
   };
 
   const handleConfirm = () => {
-    if (!address || !region) return;
+    if (!address || !currentRegion) return;
     onConfirm({ 
-      latitude: region.latitude, 
-      longitude: region.longitude, 
+      latitude: currentRegion.latitude, 
+      longitude: currentRegion.longitude, 
       formattedAddress: address 
     });
   };
@@ -174,7 +180,7 @@ const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
             <Text style={styles.loadingText}>Loading map...</Text>
           </View>
         </View>
-      ) : !region ? (
+      ) : !mapInitialRegion ? (
         <View style={styles.center}>
           <View style={styles.loadingCard}>
             <Text style={styles.loadingText}>Enable location services to pick a place</Text>
@@ -186,7 +192,7 @@ const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
             ref={mapRef}
             style={{ flex: 1 }}
             provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
-            initialRegion={region}
+            initialRegion={mapInitialRegion}
             onRegionChangeComplete={onRegionChangeComplete}
             zoomControlEnabled={Platform.OS === 'android'}
             showsUserLocation={true}

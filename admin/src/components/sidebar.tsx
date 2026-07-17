@@ -14,6 +14,7 @@ import {
   Settings,
   Coins,
   Briefcase,
+  Wallet,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { cn } from '@/lib/utils';
@@ -36,6 +37,7 @@ const MENU_ITEMS: MenuItem[] = [
   { icon: Coins, label: 'COD Management', href: '/dashboard/cod' },
   { icon: Store, label: 'Stores', href: '/dashboard/stores' },
   { icon: Briefcase, label: 'Vendor Settlements', href: '/dashboard/vendor-settlements' },
+  { icon: Wallet, label: 'Withdrawal Requests', href: '/dashboard/withdrawals' },
   { icon: ShieldCheck, label: 'Merchant verify', href: '/dashboard/verification/merchants' },
   { icon: ShieldCheck, label: 'Delivery verify', href: '/dashboard/verification/delivery' },
   { icon: Settings, label: 'Settings', href: '/dashboard/settings' },

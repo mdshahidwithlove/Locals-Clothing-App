@@ -160,29 +160,10 @@ export default function AddressSelector({
     return 'Select delivery address';
   };
 
-  const openMap = useCallback(async () => {
-    try {
-      // Initialize region from current location or a sensible default
-      let initLat = currentLocation?.latitude ?? 12.9716; // Bengaluru default
-      let initLng = currentLocation?.longitude ?? 77.5946;
-      if (!currentLocation) {
-        const loc = await getCurrentLocation();
-        if (loc) {
-          initLat = loc.latitude;
-          initLng = loc.longitude;
-        }
-      }
-      setMapRegion({
-        latitude: initLat,
-        longitude: initLng,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      });
-      setMapVisible(true);
-    } catch {
-      // noop
-    }
-  }, [currentLocation, getCurrentLocation]);
+  const openMap = useCallback(() => {
+    setModalVisible(false);
+    setMapVisible(true);
+  }, []);
 
   const confirmPickedAddress = async (params: { latitude: number; longitude: number; formattedAddress: string }) => {
     setMapPrefillAddress(params.formattedAddress);
@@ -425,7 +406,10 @@ export default function AddressSelector({
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[styles.saveButton, deliveryPhone.length !== 10 && styles.saveButtonDisabled]}
-                        onPress={() => setManualAddressVisible(true)}
+                        onPress={() => {
+                          setModalVisible(false);
+                          setManualAddressVisible(true);
+                        }}
                         disabled={deliveryPhone.length !== 10}
                       >
                         <Text style={styles.saveButtonText}>Continue to Address Form</Text>
@@ -444,6 +428,7 @@ export default function AddressSelector({
         onClose={() => {
           setManualAddressVisible(false);
           setMapPrefillAddress(undefined);
+          setModalVisible(true);
         }}
         title="Add Delivery Address"
         initialAddress={mapPrefillAddress}

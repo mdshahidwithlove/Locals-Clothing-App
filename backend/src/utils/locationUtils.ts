@@ -59,6 +59,16 @@ export function extractCoordinatesFromMapLink(mapLink: string): { lat: number; l
       };
     }
 
+    // Pattern 5: /dir/.../lat,lng
+    const dirPattern = /\/dir\/[^\/]+\/(-?\d+\.?\d*),(-?\d+\.?\d*)/;
+    const dirMatch = mapLink.match(dirPattern);
+    if (dirMatch) {
+      return {
+        lat: parseFloat(dirMatch[1]!),
+        lng: parseFloat(dirMatch[2]!)
+      };
+    }
+
     return null;
   } catch (error) {
     console.error('Error extracting coordinates from map link:', error);
@@ -111,7 +121,22 @@ export async function geocodeAddress(address: string): Promise<{ lat: number; ln
 export async function getStoreLocation(store: { address: string; mapLink: string }): Promise<{ lat: number; lng: number; address: string } | null> {
   // Try to extract from map link first
   if (store.mapLink) {
-    const coords = extractCoordinatesFromMapLink(store.mapLink);
+    let resolvedLink = store.mapLink;
+    if (store.mapLink.includes('maps.app.goo.gl') || store.mapLink.includes('goo.gl/maps')) {
+      try {
+        const axios = require('axios');
+        const response = await axios.head(store.mapLink, {
+          maxRedirects: 5,
+          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+          validateStatus: (status: number) => status >= 200 && status < 400
+        });
+        resolvedLink = response.request?.res?.responseUrl || response.headers?.location || store.mapLink;
+        console.log('Resolved short Google Maps link to:', resolvedLink);
+      } catch (error) {
+        console.error('Error resolving short map link:', error);
+      }
+    }
+    const coords = extractCoordinatesFromMapLink(resolvedLink);
     if (coords) {
       return {
         ...coords,

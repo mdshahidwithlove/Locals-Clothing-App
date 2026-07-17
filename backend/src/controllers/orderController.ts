@@ -35,10 +35,6 @@ const updateOrderStatusSchema = z.object({
 
 // Helper function to calculate platform fee based on store commission or global config
 async function calculatePlatformFee(storeId: string, itemsTotal: number): Promise<number> {
-  const store = await StoreModel.findById(storeId);
-  if (store && (store as any).commissionRate !== undefined && (store as any).commissionRate !== null) {
-    return Math.round(itemsTotal * ((store as any).commissionRate / 100));
-  }
   const feeType = getConfig("PLATFORM_FEE_TYPE", "flat");
   const feeValueRaw = getConfig("PLATFORM_FEE_VALUE", "5");
   const feeValue = parseFloat(feeValueRaw) || 0;
