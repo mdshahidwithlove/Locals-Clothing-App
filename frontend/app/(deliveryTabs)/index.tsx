@@ -185,7 +185,8 @@ export default function DeliveryHome() {
   };
 
   return (
-    <ScrollView
+    <>
+      <ScrollView
       style={styles.container}
       showsVerticalScrollIndicator={false}
       refreshControl={
@@ -559,6 +560,7 @@ export default function DeliveryHome() {
         </View>
       </View>
     </Modal>
+    </>
   );
 }
 
