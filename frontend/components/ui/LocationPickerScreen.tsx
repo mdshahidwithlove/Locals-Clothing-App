@@ -191,15 +191,8 @@ const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
             zoomControlEnabled={Platform.OS === 'android'}
             showsUserLocation={true}
             showsMyLocationButton={false}
-            mapType={Platform.OS === 'android' ? 'none' : 'standard'}
+            mapType="standard"
           >
-            {Platform.OS === 'android' && (
-              <UrlTile
-                urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-                maximumZ={19}
-                tileSize={256}
-              />
-            )}
           </MapView>
           
           {/* Center Pin - Sharp and Precise */}

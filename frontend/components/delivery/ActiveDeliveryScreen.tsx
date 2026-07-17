@@ -254,15 +254,8 @@ const ActiveDeliveryScreen: React.FC<ActiveDeliveryScreenProps> = ({ delivery, o
               showsUserLocation
               showsMyLocationButton
               followsUserLocation
-              mapType={Platform.OS === 'android' ? 'none' : 'standard'}
+              mapType="standard"
             >
-              {Platform.OS === 'android' && (
-                <UrlTile
-                  urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  maximumZ={19}
-                  tileSize={256}
-                />
-              )}
               {/* Current location marker */}
               {currentLocation && (
                 <Marker

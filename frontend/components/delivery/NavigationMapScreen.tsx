@@ -536,15 +536,8 @@ const NavigationMapScreen: React.FC = () => {
             longitudeDelta: region.longitudeDelta,
           });
         }}
-        mapType={Platform.OS === 'android' ? 'none' : 'standard'}
+        mapType="standard"
       >
-        {Platform.OS === 'android' && (
-          <UrlTile
-            urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-            maximumZ={19}
-            tileSize={256}
-          />
-        )}
         {/* Current Location Marker */}
         {currentLocation && (
           <Marker
