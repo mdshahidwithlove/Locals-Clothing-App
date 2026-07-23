@@ -32,6 +32,8 @@ const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
   // Pulsing animation for precise point
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
+  const hasBootstrapped = useRef(false);
+
   // Start pulsing animation
   useEffect(() => {
     const pulse = Animated.loop(
@@ -53,12 +55,18 @@ const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
   }, [pulseAnim]);
 
   useEffect(() => {
+    if (hasBootstrapped.current) return;
+    hasBootstrapped.current = true;
+
     const bootstrap = async () => {
       try {
-        // Default to Bengaluru if GPS lookup fails or permission denied
-        let lat = currentLocation?.latitude ?? 12.9716;
-        let lng = currentLocation?.longitude ?? 77.5946;
-        if (currentLocation?.latitude == null) {
+        // Priority 1: initialRegion prop if passed
+        // Priority 2: currentLocation context if available
+        // Priority 3: fallback GPS / default coordinates
+        let lat = initialRegion?.latitude ?? currentLocation?.latitude ?? 30.21;
+        let lng = initialRegion?.longitude ?? currentLocation?.longitude ?? 74.95;
+
+        if (initialRegion?.latitude == null && currentLocation?.latitude == null) {
           try {
             const loc = await getCurrentLocation();
             if (loc) {
@@ -69,31 +77,53 @@ const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
             console.warn('Location bootstrap error:', e);
           }
         }
+
         const next: Region = {
           latitude: lat,
           longitude: lng,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
+          latitudeDelta: initialRegion?.latitudeDelta || 0.01,
+          longitudeDelta: initialRegion?.longitudeDelta || 0.01,
         };
+
         setMapInitialRegion(next);
         setCurrentRegion(next);
         setIsGeocoding(true);
+
         const addr = await reverseGeocode(lat, lng);
-        setAddress(addr?.formattedAddress || '');
+        if (addr?.formattedAddress) {
+          setAddress(addr.formattedAddress);
+        }
+      } catch (err) {
+        console.error('Error during map bootstrap:', err);
       } finally {
         setIsBootstrapping(false);
         setIsGeocoding(false);
       }
     };
+
     bootstrap();
-  }, [currentLocation, getCurrentLocation, reverseGeocode]);
+  }, [initialRegion, currentLocation, getCurrentLocation, reverseGeocode]);
 
   const onRegionChangeComplete = async (next: Region) => {
+    if (isBootstrapping) return;
+    
+    // Only update region and geocode if latitude/longitude changed significantly
+    if (
+      currentRegion && 
+      Math.abs(currentRegion.latitude - next.latitude) < 0.00005 &&
+      Math.abs(currentRegion.longitude - next.longitude) < 0.00005
+    ) {
+      return;
+    }
+
     setCurrentRegion(next);
     setIsGeocoding(true);
     try {
       const addr = await reverseGeocode(next.latitude, next.longitude);
-      setAddress(addr?.formattedAddress || '');
+      setAddress(addr?.formattedAddress || `Location (${next.latitude.toFixed(4)}, ${next.longitude.toFixed(4)})`);
+    } catch (err) {
+      console.error('Geocoding error on region change:', err);
+      setAddress(`Location (${next.latitude.toFixed(4)}, ${next.longitude.toFixed(4)})`);
     } finally {
       setIsGeocoding(false);
     }

@@ -95,7 +95,7 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
     }
   }, []);
 
-  // Reverse geocoding function
+  // Reverse geocoding function with free Nominatim fallback
   const reverseGeocode = useCallback(async (latitude: number, longitude: number): Promise<LocationData | null> => {
     try {
       const addresses = await Location.reverseGeocodeAsync({
@@ -103,7 +103,7 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
         longitude,
       });
 
-      if (addresses.length > 0) {
+      if (addresses && addresses.length > 0) {
         const address = addresses[0];
         
         // Extract components
@@ -124,7 +124,7 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
         
         const formattedAddress = addressParts.join(', ');
 
-        const locationData: LocationData = {
+        return {
           latitude,
           longitude,
           landmark,
@@ -135,15 +135,56 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
           pincode,
           formattedAddress,
         };
-
-        return locationData;
       }
-      
-      return null;
     } catch (error) {
-      console.error('Error reverse geocoding:', error);
-      return null;
+      console.warn('Native reverse geocode warning, trying OpenStreetMap fallback:', error);
     }
+
+    // Free Fallback: OpenStreetMap Nominatim API
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+        {
+          headers: {
+            'User-Agent': 'LocalsClothingApp/1.0 (contact@localsclothing.app)'
+          }
+        }
+      );
+      const data = await res.json();
+      if (data && data.display_name) {
+        const addr = data.address || {};
+        const landmark = addr.road || addr.suburb || addr.amenity || '';
+        const street = addr.road || addr.neighbourhood || '';
+        const city = addr.city || addr.town || addr.village || addr.subregion || addr.county || 'Locality';
+        const state = addr.state || 'State';
+        const country = addr.country || 'India';
+        const pincode = addr.postcode || '';
+
+        return {
+          latitude,
+          longitude,
+          landmark,
+          street,
+          city,
+          state,
+          country,
+          pincode,
+          formattedAddress: data.display_name
+        };
+      }
+    } catch (err) {
+      console.error('Free Nominatim reverse geocode error:', err);
+    }
+
+    // Ultimate Fallback if offline or network fails
+    return {
+      latitude,
+      longitude,
+      city: 'Locality',
+      state: 'State',
+      country: 'India',
+      formattedAddress: `Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`
+    };
   }, []);
 
   // Save location data to storage

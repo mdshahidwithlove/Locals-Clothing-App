@@ -724,6 +724,34 @@ async function getDeliveryStats(req: Request, res: Response) {
     const cashInHand = Math.round(cashInHandResult[0]?.cashInHand || 0);
     const netOwed = cashInHand;
 
+    // Calculate Today, Weekly, and Monthly breakdown
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const startOfMonth = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const [todayAgg, weeklyAgg, monthlyAgg] = await Promise.all([
+      DeliveryModel.aggregate([
+        { $match: { deliveryPerson: user._id, status: 'Delivered', updatedAt: { $gte: startOfToday } } },
+        { $group: { _id: null, earnings: { $sum: '$deliveryFee' }, count: { $sum: 1 } } }
+      ]),
+      DeliveryModel.aggregate([
+        { $match: { deliveryPerson: user._id, status: 'Delivered', updatedAt: { $gte: startOfWeek } } },
+        { $group: { _id: null, earnings: { $sum: '$deliveryFee' }, count: { $sum: 1 } } }
+      ]),
+      DeliveryModel.aggregate([
+        { $match: { deliveryPerson: user._id, status: 'Delivered', updatedAt: { $gte: startOfMonth } } },
+        { $group: { _id: null, earnings: { $sum: '$deliveryFee' }, count: { $sum: 1 } } }
+      ]),
+    ]);
+
+    const todayEarnings = Math.round(todayAgg[0]?.earnings || 0);
+    const todayDeliveries = todayAgg[0]?.count || 0;
+    const weeklyEarnings = Math.round(weeklyAgg[0]?.earnings || 0);
+    const weeklyDeliveries = weeklyAgg[0]?.count || 0;
+    const monthlyEarnings = Math.round(monthlyAgg[0]?.earnings || 0);
+    const monthlyDeliveries = monthlyAgg[0]?.count || 0;
+
     const stats = {
       totalDeliveries,
       pending: pendingDeliveries + acceptedDeliveries + pickedUpDeliveries, // All in-progress deliveries
@@ -731,6 +759,12 @@ async function getDeliveryStats(req: Request, res: Response) {
       cancelled: cancelledDeliveries,
       averageRating: ratingResult[0]?.averageRating || 0,
       totalEarnings: earningsResult[0]?.totalEarnings || 0,
+      todayEarnings,
+      todayDeliveries,
+      weeklyEarnings,
+      weeklyDeliveries,
+      monthlyEarnings,
+      monthlyDeliveries,
       onlinePaymentEarnings,
       cashInHand,
       netOwed

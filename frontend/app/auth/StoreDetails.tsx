@@ -1,4 +1,3 @@
-import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,6 +10,7 @@ import {
   Animated,
   Alert,
   ScrollView,
+  Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/colors';
@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import apiClient from '../../api/client';
 import { useAuth } from '../../contexts/AuthContext';
 import ImageUploader from '../../components/ui/ImageUploader';
+import LocationPickerScreen from '@/components/ui/LocationPickerScreen';
 
 interface WorkingDays {
   monday: boolean;
@@ -83,6 +84,7 @@ const StoreDetails = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(1));
   const [errors, setErrors] = useState<FormErrors>({});
+  const [showMapPicker, setShowMapPicker] = useState(false);
 
   // Validation function
   const validateForm = useCallback((): FormErrors => {
@@ -482,9 +484,18 @@ const StoreDetails = () => {
                 />
               </View>
 
-              {/* Address */}
+  // Address
               <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Store Address *</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <Text style={styles.inputLabel}>Store Address *</Text>
+                  <TouchableOpacity 
+                    style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#EFF6FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}
+                    onPress={() => setShowMapPicker(true)}
+                  >
+                    <Ionicons name="location" size={14} color={Colors.primary} style={{ marginRight: 4 }} />
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: Colors.primary }}>Pin on Map</Text>
+                  </TouchableOpacity>
+                </View>
                 <View style={[
                   styles.inputWrapper,
                   errors.address && styles.inputWrapperError
@@ -499,7 +510,7 @@ const StoreDetails = () => {
                     style={styles.textInput}
                     value={storeData.address}
                     onChangeText={(value) => handleInputChange('address', value)}
-                    placeholder="Enter your store address"
+                    placeholder="Enter your store address or pin on map"
                     placeholderTextColor={Colors.textMuted}
                     autoCapitalize="words"
                     autoCorrect={false}
@@ -538,6 +549,34 @@ const StoreDetails = () => {
                   <Text style={styles.errorText}>{errors.mapLink}</Text>
                 )}
               </View>
+
+              {/* Map Picker Modal */}
+              <Modal
+                visible={showMapPicker}
+                animationType="slide"
+                presentationStyle="fullScreen"
+                onRequestClose={() => setShowMapPicker(false)}
+              >
+                <LocationPickerScreen
+                  title="Pin Store Location"
+                  onClose={() => setShowMapPicker(false)}
+                  onConfirm={({ latitude, longitude, formattedAddress }) => {
+                    const generatedMapLink = `https://maps.google.com/?q=${latitude},${longitude}`;
+                    setStoreData(prev => ({
+                      ...prev,
+                      address: formattedAddress,
+                      mapLink: generatedMapLink,
+                    }));
+                    setErrors(prev => ({
+                      ...prev,
+                      address: undefined,
+                      mapLink: undefined,
+                    }));
+                    setShowMapPicker(false);
+                    Alert.alert('Store Location Pinned!', 'Exact store address and coordinates saved.');
+                  }}
+                />
+              </Modal>
 
               {/* Contact Information */}
               <View style={styles.sectionContainer}>

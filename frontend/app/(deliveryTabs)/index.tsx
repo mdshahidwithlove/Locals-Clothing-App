@@ -26,8 +26,8 @@ export default function DeliveryHome() {
   const [recentDeliveries, setRecentDeliveries] = useState<any[]>([]);
   const [isSettling, setIsSettling] = useState(false);
 
-  // Withdrawal states
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [showEarningsModal, setShowEarningsModal] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [withdrawMethod, setWithdrawMethod] = useState<'UPI' | 'BankTransfer'>('UPI');
   const [upiId, setUpiId] = useState('');
@@ -253,15 +253,19 @@ export default function DeliveryHome() {
           </LinearGradient>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.statCard} activeOpacity={0.8}>
+        <TouchableOpacity 
+          style={styles.statCard} 
+          activeOpacity={0.8}
+          onPress={() => setShowEarningsModal(true)}
+        >
           <LinearGradient
             colors={['#FF9800', '#F57C00']}
             style={styles.statGradient}
           >
             <Ionicons name="wallet" size={24} color="#FFFFFF" />
             <View style={styles.statContent}>
-              <Text style={styles.statNumber}>{isLoading ? '...' : `₹${Math.round(stats.totalEarnings || 0)}`}</Text>
-              <Text style={styles.statLabel}>Earned</Text>
+              <Text style={styles.statNumber}>{isLoading ? '...' : `₹${Math.round(stats.todayEarnings || 0)}`}</Text>
+              <Text style={styles.statLabel}>Today's Earnings 📊</Text>
             </View>
           </LinearGradient>
         </TouchableOpacity>
@@ -557,6 +561,134 @@ export default function DeliveryHome() {
               </Text>
             </TouchableOpacity>
           </View>
+        </View>
+      </View>
+    </Modal>
+
+    {/* Rider Earnings Statement Modal */}
+    <Modal
+      visible={showEarningsModal}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={() => setShowEarningsModal(false)}
+    >
+      <View style={styles.withdrawModalContainer}>
+        <View style={[styles.withdrawModalContent, { maxHeight: '85%' }]}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <Text style={styles.withdrawModalTitle}>Earnings Statement 📊</Text>
+            <TouchableOpacity onPress={() => setShowEarningsModal(false)}>
+              <Ionicons name="close-circle" size={28} color="#757575" />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {/* Earnings Breakdown Cards */}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 16 }}>
+              {/* Today */}
+              <View style={{ width: '48%', backgroundColor: '#E8F5E9', padding: 12, borderRadius: 12, marginBottom: 10, borderWidth: 1, borderColor: '#C8E6C9' }}>
+                <Text style={{ fontSize: 11, color: '#2E7D32', fontWeight: '700' }}>TODAY</Text>
+                <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#1B5E20', marginVertical: 4 }}>
+                  ₹{Math.round(stats.todayEarnings || 0)}
+                </Text>
+                <Text style={{ fontSize: 11, color: '#388E3C' }}>
+                  {stats.todayDeliveries || 0} Deliveries
+                </Text>
+              </View>
+
+              {/* Weekly */}
+              <View style={{ width: '48%', backgroundColor: '#E3F2FD', padding: 12, borderRadius: 12, marginBottom: 10, borderWidth: 1, borderColor: '#BBDEFB' }}>
+                <Text style={{ fontSize: 11, color: '#1565C0', fontWeight: '700' }}>WEEKLY (7 DAYS)</Text>
+                <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#0D47A1', marginVertical: 4 }}>
+                  ₹{Math.round(stats.weeklyEarnings || 0)}
+                </Text>
+                <Text style={{ fontSize: 11, color: '#1976D2' }}>
+                  {stats.weeklyDeliveries || 0} Deliveries
+                </Text>
+              </View>
+
+              {/* Monthly */}
+              <View style={{ width: '48%', backgroundColor: '#F3E5F5', padding: 12, borderRadius: 12, marginBottom: 10, borderWidth: 1, borderColor: '#E1BEE7' }}>
+                <Text style={{ fontSize: 11, color: '#7B1FA2', fontWeight: '700' }}>MONTHLY (30 DAYS)</Text>
+                <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#4A148C', marginVertical: 4 }}>
+                  ₹{Math.round(stats.monthlyEarnings || 0)}
+                </Text>
+                <Text style={{ fontSize: 11, color: '#8E24AA' }}>
+                  {stats.monthlyDeliveries || 0} Deliveries
+                </Text>
+              </View>
+
+              {/* Lifetime */}
+              <View style={{ width: '48%', backgroundColor: '#FFF3E0', padding: 12, borderRadius: 12, marginBottom: 10, borderWidth: 1, borderColor: '#FFE0B2' }}>
+                <Text style={{ fontSize: 11, color: '#E65100', fontWeight: '700' }}>LIFETIME TOTAL</Text>
+                <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#BF360C', marginVertical: 4 }}>
+                  ₹{Math.round(stats.totalEarnings || 0)}
+                </Text>
+                <Text style={{ fontSize: 11, color: '#F57C00' }}>
+                  {stats.completed || 0} Deliveries
+                </Text>
+              </View>
+            </View>
+
+            {/* Statement Delivery History */}
+            <Text style={{ fontSize: 15, fontWeight: '700', color: Colors.text, marginBottom: 10 }}>
+              Recent Delivery Statement
+            </Text>
+            {recentDeliveries.length === 0 ? (
+              <Text style={{ color: Colors.textMuted, fontSize: 13 }}>No recent earnings records found.</Text>
+            ) : (
+              recentDeliveries.map((item: any) => (
+                <View 
+                  key={item._id}
+                  style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    backgroundColor: '#F9FAFB',
+                    padding: 12,
+                    borderRadius: 10,
+                    marginBottom: 8,
+                    borderWidth: 1,
+                    borderColor: '#EEEEEE',
+                  }}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.text }}>
+                      Order #{item.order?.orderNumber || item._id.substring(0, 8)}
+                    </Text>
+                    <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 2 }}>
+                      {new Date(item.updatedAt || item.createdAt).toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })} • Status: {item.status}
+                    </Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#2E7D32' }}>
+                      +₹{Math.round(item.deliveryFee || 0)}
+                    </Text>
+                    <Text style={{ fontSize: 10, color: Colors.textMuted }}>
+                      {item.order?.paymentMethod || 'COD'}
+                    </Text>
+                  </View>
+                </View>
+              ))
+            )}
+          </ScrollView>
+
+          <TouchableOpacity
+            style={{
+              backgroundColor: Colors.primary,
+              paddingVertical: 12,
+              borderRadius: 10,
+              alignItems: 'center',
+              marginTop: 12,
+            }}
+            onPress={() => setShowEarningsModal(false)}
+          >
+            <Text style={{ color: '#FFFFFF', fontWeight: 'bold', fontSize: 14 }}>Close Statement</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </Modal>
