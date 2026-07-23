@@ -347,9 +347,36 @@ async function uploadRefundProof(req: Request, res: Response) {
   }
 }
 
+async function getMerchantReturns(req: Request, res: Response) {
+  try {
+    const user = (req as any).user;
+    if (user.role !== "Merchant") {
+      return res.status(403).json({ success: false, message: "Access denied" });
+    }
+
+    const returns = await ReturnModel.find({ merchant: user._id })
+      .populate("order", "orderNumber status totalAmount paymentMethod shippingAddress items")
+      .populate("customer", "name phone avatar")
+      .populate({
+        path: "returnDelivery",
+        populate: { path: "deliveryPerson", select: "name phone" },
+      })
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      returns,
+    });
+  } catch (error) {
+    console.error("Error fetching merchant returns:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+}
+
 export {
   createReturnRequest,
   getReturnByOrderId,
+  getMerchantReturns,
   approveReturn,
   rejectReturn,
   completeRefund,

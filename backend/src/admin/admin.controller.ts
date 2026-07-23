@@ -910,7 +910,7 @@ export async function processAdminWithdrawal(req: CustomRequest, res: Response):
     }
 
     const withdrawal = await AdminService.updateWithdrawalStatus(
-      id,
+      id as string,
       status,
       statusNotes,
       adminId?.toString()

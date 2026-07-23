@@ -23,7 +23,7 @@ import { getPostAuthRoute } from '@/utils/authRouting';
 
 const ProfileCompletion = () => {
   const router = useRouter();
-  const { token, login } = useAuth();
+  const { token, login, logout } = useAuth();
   
   const [name, setName] = useState('');
   const [gender, setGender] = useState<'Male' | 'Female' | 'Other' | ''>('');
@@ -36,6 +36,15 @@ const ProfileCompletion = () => {
     role?: string;
   }>({});
 
+  const handleBackToAuth = useCallback(async () => {
+    try {
+      await logout();
+      router.replace('/auth/Auth');
+    } catch (err) {
+      console.error('Logout error:', err);
+      router.replace('/auth/Auth');
+    }
+  }, [logout, router]);
 
   // Memoized validation
   const isValidName = useMemo(() => {
@@ -165,6 +174,15 @@ const ProfileCompletion = () => {
 
         {/* Main Content */}
         <View style={styles.content}>
+          {/* Top Bar with Back Button */}
+          <View style={styles.topHeader}>
+            <TouchableOpacity onPress={handleBackToAuth} style={styles.topBackButton} activeOpacity={0.7}>
+              <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
+            </TouchableOpacity>
+            <Text style={styles.topHeaderText}>Profile Setup</Text>
+            <View style={{ width: 40 }} />
+          </View>
+
           <ScrollView 
             style={styles.scrollContainer}
             contentContainerStyle={styles.scrollContent}
@@ -352,6 +370,12 @@ const ProfileCompletion = () => {
                   Your information is secure and encrypted
                 </Text>
               </View>
+
+              {/* Change Phone Number / Sign Out Button */}
+              <TouchableOpacity onPress={handleBackToAuth} style={styles.changePhoneButton} activeOpacity={0.7}>
+                <Ionicons name="log-out-outline" size={18} color={Colors.primary} style={{ marginRight: 6 }} />
+                <Text style={styles.changePhoneText}>Use a different phone number / Sign Out</Text>
+              </TouchableOpacity>
             </View>
           </ScrollView>
         </View>
@@ -375,7 +399,47 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     marginTop: 'auto',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingTop: Platform.OS === 'ios' ? 50 : 30,
+  },
+  topHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  topBackButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: Colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  topHeaderText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+  },
+  changePhoneButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+    paddingVertical: 10,
+  },
+  changePhoneText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.primary,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
   scrollContainer: {
     flex: 1,

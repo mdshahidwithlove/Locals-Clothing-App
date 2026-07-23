@@ -70,11 +70,15 @@ export default function HomeScreen() {
   const loadData = useCallback(async (force: boolean = false) => {
     if (hasLoadedData && !force) return;
     try {
-      const bestSellerResponse = await apiClient.get('/api/v1/store/bestsellers', {
-        params: { limit: 4 },
-      });
-      if (bestSellerResponse.data.success) {
-        setBestSellerStores(bestSellerResponse.data.stores);
+      try {
+        const bestSellerResponse = await apiClient.get('/api/v1/store/bestsellers', {
+          params: { limit: 4 },
+        });
+        if (bestSellerResponse.data.success) {
+          setBestSellerStores(bestSellerResponse.data.stores);
+        }
+      } catch (e) {
+        console.error('Error loading bestsellers:', e);
       }
 
       await fetchStores();

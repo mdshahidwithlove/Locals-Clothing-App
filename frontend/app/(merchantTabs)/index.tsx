@@ -36,6 +36,43 @@ export default function MerchantHome() {
   const [accountHolderName, setAccountHolderName] = useState('');
   const [isSubmittingWithdraw, setIsSubmittingWithdraw] = useState(false);
   const [withdrawalHistory, setWithdrawalHistory] = useState<any[]>([]);
+  const [merchantReturns, setMerchantReturns] = useState<any[]>([]);
+
+  const handleApproveReturn = async (returnId: string) => {
+    try {
+      const res = await apiClient.post(`/api/v1/returns/${returnId}/approve`);
+      if (res.data?.success) {
+        Alert.alert('Success', 'Return request approved! Delivery partner assigned for pickup.');
+        loadMerchantStats();
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error?.response?.data?.message || 'Failed to approve return');
+    }
+  };
+
+  const handleRejectReturn = async (returnId: string) => {
+    try {
+      const res = await apiClient.post(`/api/v1/returns/${returnId}/reject`);
+      if (res.data?.success) {
+        Alert.alert('Success', 'Return request rejected.');
+        loadMerchantStats();
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error?.response?.data?.message || 'Failed to reject return');
+    }
+  };
+
+  const handleCompleteRefund = async (returnId: string) => {
+    try {
+      const res = await apiClient.post(`/api/v1/returns/${returnId}/complete-refund`);
+      if (res.data?.success) {
+        Alert.alert('Success', 'Refund marked as completed.');
+        loadMerchantStats();
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error?.response?.data?.message || 'Failed to complete refund');
+    }
+  };
 
   const handleRequestWithdrawal = async () => {
     const amt = parseFloat(withdrawAmount);
@@ -131,6 +168,16 @@ export default function MerchantHome() {
         }
       } catch (error) {
         console.error('Error loading withdrawal history:', error);
+      }
+
+      // Load merchant return requests
+      try {
+        const returnsResp = await apiClient.get('/api/v1/returns/merchant');
+        if (returnsResp.data?.success) {
+          setMerchantReturns(returnsResp.data.returns || []);
+        }
+      } catch (error) {
+        console.error('Error loading merchant returns:', error);
       }
 
       // Store rating from store details
@@ -1337,5 +1384,106 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#000000',
+  },
+  returnHighlightBanner: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 4,
+    backgroundColor: '#FFF5F5',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#FECACA',
+    padding: 14,
+    elevation: 3,
+  },
+  returnHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#FEE2E2',
+    paddingBottom: 8,
+  },
+  returnTitleText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#991B1B',
+  },
+  returnBadgeCount: {
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  returnBadgeCountText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  returnCardItem: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+  },
+  returnOrderNum: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  returnStatusPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  returnStatusPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  returnCustomerText: {
+    fontSize: 13,
+    color: '#4B5563',
+    marginTop: 4,
+  },
+  returnReasonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#DC2626',
+    marginTop: 2,
+  },
+  returnNotesText: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontStyle: 'italic',
+    marginTop: 2,
+  },
+  returnAmountText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111827',
+    marginTop: 4,
+  },
+  returnActionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+  },
+  returnActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    flex: 1,
+  },
+  returnActionBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

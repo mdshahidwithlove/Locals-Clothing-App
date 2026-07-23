@@ -1,8 +1,8 @@
 import axios from "axios";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Use environment variable or fallback to localhost for development
-export const baseUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
+// Use environment variable or fallback to production Render backend
+export const baseUrl = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://locals-clothing-app.onrender.com';
 
 // Log the base URL for debugging
 console.log('API Base URL:', baseUrl);

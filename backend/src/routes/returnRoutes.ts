@@ -5,6 +5,7 @@ import { requireApprovedVerification } from "../middleware/verificationAuth";
 import {
   createReturnRequest,
   getReturnByOrderId,
+  getMerchantReturns,
   approveReturn,
   rejectReturn,
   completeRefund,
@@ -16,6 +17,7 @@ const returnRoute = express.Router();
 returnRoute.use(isAuthenticated);
 
 returnRoute.post("/", requireRole(["User"]), createReturnRequest);
+returnRoute.get("/merchant", requireRole(["Merchant"]), getMerchantReturns);
 returnRoute.get("/order/:orderId", requireRole(["User", "Merchant"]), getReturnByOrderId);
 returnRoute.post(
   "/:returnId/approve",
