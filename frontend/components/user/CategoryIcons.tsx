@@ -77,34 +77,35 @@ export const getImageForSubcategory = (subcategory: string): ImageSourcePropType
     Accessories: require('@/assets/images/categories/accessories.png'),
     Undergarments: require('@/assets/images/categories/undergarments.png'),
     Underwear: require('@/assets/images/categories/undergarments.png'),
+    Dresses: require('@/assets/images/categories/dresses.png'),
+    Tops: require('@/assets/images/categories/tops.png'),
+    Jackets: require('@/assets/images/categories/jackets.png'),
+    Sarees: require('@/assets/images/categories/sarees.png'),
   };
 
   if (local3DImages[subcategory]) {
     return local3DImages[subcategory];
   }
 
+  // Background-free 3D cutouts for all remaining subcategories
   const imageMap: { [key: string]: ImageSourcePropType } = {
-    Tops: remote('https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=150&h=150&fit=fill&bg=ffffff&q=80'),
-    Hoodies: remote('https://images.unsplash.com/photo-1620799139507-2a76f79a2f4d?w=150&h=150&fit=fill&bg=ffffff&q=80'),
-    Sweatshirts: remote('https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=150&h=150&fit=fill&bg=ffffff&q=80'),
-    Sweaters: remote('https://images.unsplash.com/photo-1614975058789-41316d0e2e9c?w=150&h=150&fit=fill&bg=ffffff&q=80'),
-    Cardigans: remote('https://images.unsplash.com/photo-1574164904299-3a102b110380?w=150&h=150&fit=fill&bg=ffffff&q=80'),
-    Leggings: remote('https://images.unsplash.com/photo-1541511081884-ee14f9d86b70?w=150&h=150&fit=fill&bg=ffffff&q=80'),
-    Skirts: remote('https://images.unsplash.com/photo-1583496661160-fb48862c4841?w=150&h=150&fit=fill&bg=ffffff&q=80'),
-    Jackets: remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/jackets.png'),
-    Blazers: remote('https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=150&h=150&fit=fill&bg=ffffff&q=80'),
-    Coats: remote('https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&h=150&fit=fill&bg=ffffff&q=80'),
-    Suits: remote('https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=150&h=150&fit=fill&bg=ffffff&q=80'),
-    Dresses: remote('https://images.unsplash.com/photo-1612336307429-8a898d10e223?w=150&h=150&fit=fill&bg=ffffff&q=80'),
-    Sarees: remote('https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=150&h=150&fit=fill&bg=ffffff&q=80'),
-    Kurtas: remote('https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=150&h=150&fit=fill&bg=ffffff&q=80'),
-    Sleepwear: remote('https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?w=150&h=150&fit=fill&bg=ffffff&q=80'),
-    Activewear: remote('https://images.unsplash.com/photo-1483721310020-03333e577078?w=150&h=150&fit=fill&bg=ffffff&q=80'),
-    Swimwear: remote('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=150&h=150&fit=fill&bg=ffffff&q=80'),
-    'Ethnic Wear': remote('https://images.unsplash.com/photo-1609357605129-26f69add5d6e?w=150&h=150&fit=fill&bg=ffffff&q=80'),
+    Kurtas: remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/kurtas.png'),
+    Hoodies: remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/hoodies.png'),
+    Sweatshirts: remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/sweatshirts.png'),
+    Sweaters: remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/sweaters.png'),
+    Cardigans: remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/cardigans.png'),
+    Leggings: remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/leggings.png'),
+    Skirts: remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/skirts.png'),
+    Blazers: remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/blazers.png'),
+    Coats: remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/coats.png'),
+    Suits: remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/suits.png'),
+    Sleepwear: remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/sleepwear.png'),
+    Activewear: remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/activewear.png'),
+    Swimwear: remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/swimwear.png'),
+    'Ethnic Wear': remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/ethnicwear.png'),
   };
   
-  return imageMap[subcategory] || remote('https://images.unsplash.com/photo-1608228088998-57828365d486?w=150&h=150&fit=fill&bg=ffffff&q=80');
+  return imageMap[subcategory] || require('@/assets/images/categories/tshirts.png');
 };
 
 const CategoryIcons: React.FC<CategoryIconsProps> = ({ 
