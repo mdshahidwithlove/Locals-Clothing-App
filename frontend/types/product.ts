@@ -46,11 +46,10 @@ export interface FormErrors {
 export const PRODUCT_CATEGORIES = ['Men', 'Women', 'Kids', 'Unisex'] as const;
 
 export const PRODUCT_SUBCATEGORIES = {
-      'Men': ['Shirts', 'T-Shirts', 'Pants', 'Jeans', 'Shorts', 'Jackets', 'Suits', 'Coats'],
-      'Women': ['Dresses', 'Tops', 'Sarees', 'Kurtas', 'Skirts', 'Leggings', 'Shirts', 'T-Shirts', 'Pants', 'Jeans', 
-      'Shorts',  ],
-      'Kids': ['Shirts', 'T-Shirts', 'Dresses', 'Tops', 'Skirts', 'Leggings', 'Jackets'],
-      'Unisex': ['Jackets', 'Hoodies', 'Sweatshirts','Blazers']
+  'Men': ['Shirts', 'Jeans', 'Lower', 'T-Shirts', 'Footwear', 'Pants', 'Shorts', 'Accessories', 'Undergarments', 'Jackets', 'Suits', 'Coats'],
+  'Women': ['Shirts', 'Jeans', 'Lower', 'T-Shirts', 'Footwear', 'Pants', 'Shorts', 'Accessories', 'Undergarments', 'Dresses', 'Tops', 'Sarees', 'Kurtas', 'Skirts', 'Leggings'],
+  'Kids': ['Shirts', 'Jeans', 'Lower', 'T-Shirts', 'Footwear', 'Pants', 'Shorts', 'Accessories', 'Undergarments', 'Dresses', 'Tops', 'Skirts', 'Leggings', 'Jackets'],
+  'Unisex': ['Shirts', 'Jeans', 'Lower', 'T-Shirts', 'Footwear', 'Pants', 'Shorts', 'Accessories', 'Undergarments', 'Jackets', 'Hoodies', 'Sweatshirts', 'Blazers']
 } as const;
 
 export const PRODUCT_MATERIALS = ['Cotton', 'Polyester', 'Silk', 'Wool', 'Linen','Leather'] as const;

@@ -4,9 +4,9 @@ import type { Response } from "express";
 export const VALIDATION_CONSTANTS = {
   CATEGORIES: ["Men", "Women", "Kids", "Unisex"],
   SUBCATEGORIES: [
-    "Shirts", "T-Shirts", "Pants", "Jeans", "Shorts", "Jackets", "Suits",
+    "Shirts", "Jeans", "Lower", "T-Shirts", "Footwear", "Pants", "Shorts", "Accessories", "Undergarments",
     "Dresses", "Tops", "Sarees", "Kurtas", "Skirts", "Leggings",
-    "Hoodies", "Sweatshirts", "Sweaters", "Cardigans", "Blazers", "Coats",
+    "Jackets", "Hoodies", "Sweatshirts", "Sweaters", "Cardigans", "Blazers", "Coats", "Suits",
     "Underwear", "Sleepwear", "Activewear", "Swimwear", "Ethnic Wear"
   ],
   WORKING_DAYS: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],

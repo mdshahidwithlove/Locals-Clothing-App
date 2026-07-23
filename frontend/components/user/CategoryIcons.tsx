@@ -30,71 +30,74 @@ interface CategoryIconsProps {
 const { width: screenWidth } = Dimensions.get('window');
 const itemWidth = (screenWidth - 32 - 32) / 5; // 5 items per row with gaps
 
-// Get all subcategories from PRODUCT_SUBCATEGORIES with gender-based ordering
+// Master ordered list of categories per exact user request
+export const PRIORITY_SUBCATEGORY_ORDER = [
+  'Shirts',
+  'Jeans',
+  'Lower',
+  'T-Shirts',
+  'Footwear',
+  'Pants',
+  'Shorts',
+  'Accessories',
+  'Undergarments',
+];
+
+// Get all subcategories in exact user requested sequence first, followed by others
 const getAllSubcategories = (userGender?: 'Male' | 'Female' | 'Other') => {
   const allSubcategories: string[] = [];
   Object.values(PRODUCT_SUBCATEGORIES).forEach(subcategories => {
     allSubcategories.push(...subcategories);
   });
-  // Remove duplicates
+  
   const uniqueSubcategories = [...new Set(allSubcategories)];
   
-  // If user has gender preference, prioritize gender-based categories first
-  if (userGender && userGender !== 'Other') {
-    // Map user gender to product category
-    const genderToCategory: { [key: string]: keyof typeof PRODUCT_SUBCATEGORIES } = {
-      'Male': 'Men',
-      'Female': 'Women'
-    };
-    
-    const categoryKey = genderToCategory[userGender];
-    if (categoryKey) {
-      const genderCategories = PRODUCT_SUBCATEGORIES[categoryKey] || [];
-      const otherCategories = uniqueSubcategories.filter(cat => !(genderCategories as readonly string[]).includes(cat));
-      
-      // Return gender categories first, then others in alphabetical order
-      return [...genderCategories, ...otherCategories.sort()];
-    }
-  }
-  
-  // If no gender preference, return all in alphabetical order
-  return uniqueSubcategories.sort();
+  // Extract priority items in exact order
+  const priorityItems = PRIORITY_SUBCATEGORY_ORDER.filter(item => uniqueSubcategories.includes(item));
+  const remainingItems = uniqueSubcategories.filter(item => !PRIORITY_SUBCATEGORY_ORDER.includes(item));
+
+  return [...priorityItems, ...remainingItems];
 };
 
 const remote = (uri: string): ImageSourcePropType => ({ uri });
 
-// Image mapping for subcategories with high-quality realistic fashion photos on white background
+// Image mapping for subcategories with 3D model assets on clean background
 export const getImageForSubcategory = (subcategory: string): ImageSourcePropType => {
+  const local3DImages: { [key: string]: ImageSourcePropType } = {
+    Shirts: require('@/assets/images/categories/shirts.png'),
+    Jeans: require('@/assets/images/categories/jeans.png'),
+    Lower: require('@/assets/images/categories/lower.png'),
+    Lowers: require('@/assets/images/categories/lower.png'),
+    'T-Shirts': require('@/assets/images/categories/tshirts.png'),
+    'T Shirts': require('@/assets/images/categories/tshirts.png'),
+    Footwear: require('@/assets/images/categories/footwear.png'),
+    Shoes: require('@/assets/images/categories/footwear.png'),
+    Pants: require('@/assets/images/categories/pants.png'),
+    Shorts: require('@/assets/images/categories/shorts.png'),
+    Accessories: require('@/assets/images/categories/accessories.png'),
+    Undergarments: require('@/assets/images/categories/undergarments.png'),
+    Underwear: require('@/assets/images/categories/undergarments.png'),
+  };
+
+  if (local3DImages[subcategory]) {
+    return local3DImages[subcategory];
+  }
+
   const imageMap: { [key: string]: ImageSourcePropType } = {
-    // Tops & Shirts
-    Shirts: remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/shirts.png'),
-    'T-Shirts': remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/tshirts.png'),
     Tops: remote('https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=150&h=150&fit=fill&bg=ffffff&q=80'),
     Hoodies: remote('https://images.unsplash.com/photo-1620799139507-2a76f79a2f4d?w=150&h=150&fit=fill&bg=ffffff&q=80'),
     Sweatshirts: remote('https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=150&h=150&fit=fill&bg=ffffff&q=80'),
     Sweaters: remote('https://images.unsplash.com/photo-1614975058789-41316d0e2e9c?w=150&h=150&fit=fill&bg=ffffff&q=80'),
     Cardigans: remote('https://images.unsplash.com/photo-1574164904299-3a102b110380?w=150&h=150&fit=fill&bg=ffffff&q=80'),
-    
-    // Bottoms
-    Pants: remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/pants.png'),
-    Jeans: remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/jeans.png'),
-    Shorts: remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/shorts.png'),
     Leggings: remote('https://images.unsplash.com/photo-1541511081884-ee14f9d86b70?w=150&h=150&fit=fill&bg=ffffff&q=80'),
     Skirts: remote('https://images.unsplash.com/photo-1583496661160-fb48862c4841?w=150&h=150&fit=fill&bg=ffffff&q=80'),
-    
-    // Outerwear
     Jackets: remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/jackets.png'),
     Blazers: remote('https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=150&h=150&fit=fill&bg=ffffff&q=80'),
     Coats: remote('https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&h=150&fit=fill&bg=ffffff&q=80'),
     Suits: remote('https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=150&h=150&fit=fill&bg=ffffff&q=80'),
-    
-    // Dresses & Ethnic
     Dresses: remote('https://images.unsplash.com/photo-1612336307429-8a898d10e223?w=150&h=150&fit=fill&bg=ffffff&q=80'),
     Sarees: remote('https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=150&h=150&fit=fill&bg=ffffff&q=80'),
     Kurtas: remote('https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=150&h=150&fit=fill&bg=ffffff&q=80'),
-    
-    // Additional categories
-    Underwear: remote('https://images.unsplash.com/photo-1608228088998-57828365d486?w=150&h=150&fit=fill&bg=ffffff&q=80'),
     Sleepwear: remote('https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?w=150&h=150&fit=fill&bg=ffffff&q=80'),
     Activewear: remote('https://images.unsplash.com/photo-1483721310020-03333e577078?w=150&h=150&fit=fill&bg=ffffff&q=80'),
     Swimwear: remote('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=150&h=150&fit=fill&bg=ffffff&q=80'),

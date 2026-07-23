@@ -66,16 +66,33 @@ export interface SearchFilters {
 export const PRODUCT_CATEGORIES = ['Men', 'Women', 'Kids', 'Unisex'] as const;
 
 export const PRODUCT_SUBCATEGORIES = {
-  'Men': ['Shirts', 'T-Shirts', 'Pants', 'Jeans', 'Shorts', 'Jackets', 'Suits', 'Coats'],
-  'Women': ['Dresses', 'Tops', 'Sarees', 'Kurtas', 'Skirts', 'Leggings', 'Shirts', 'T-Shirts', 'Pants', 'Jeans', 'Shorts'],
-  'Kids': ['Shirts', 'T-Shirts', 'Dresses', 'Tops', 'Skirts', 'Leggings', 'Jackets'],
-  'Unisex': ['Jackets', 'Hoodies', 'Sweatshirts', 'Blazers']
+  'Men': ['Shirts', 'Jeans', 'Lower', 'T-Shirts', 'Footwear', 'Pants', 'Shorts', 'Accessories', 'Undergarments', 'Jackets', 'Suits', 'Coats'],
+  'Women': ['Shirts', 'Jeans', 'Lower', 'T-Shirts', 'Footwear', 'Pants', 'Shorts', 'Accessories', 'Undergarments', 'Dresses', 'Tops', 'Sarees', 'Kurtas', 'Skirts', 'Leggings'],
+  'Kids': ['Shirts', 'Jeans', 'Lower', 'T-Shirts', 'Footwear', 'Pants', 'Shorts', 'Accessories', 'Undergarments', 'Dresses', 'Tops', 'Skirts', 'Leggings', 'Jackets'],
+  'Unisex': ['Shirts', 'Jeans', 'Lower', 'T-Shirts', 'Footwear', 'Pants', 'Shorts', 'Accessories', 'Undergarments', 'Jackets', 'Hoodies', 'Sweatshirts', 'Blazers']
 } as const;
 
-// Get unique subcategories for filter display
+export const PRIORITY_SUBCATEGORY_ORDER = [
+  'Shirts',
+  'Jeans',
+  'Lower',
+  'T-Shirts',
+  'Footwear',
+  'Pants',
+  'Shorts',
+  'Accessories',
+  'Undergarments',
+];
+
+// Get unique subcategories maintaining master priority sequence
 export const getUniqueSubcategories = () => {
   const allSubcategories = Object.values(PRODUCT_SUBCATEGORIES).flat();
-  return [...new Set(allSubcategories)].sort();
+  const unique = [...new Set(allSubcategories)];
+  
+  const priorityItems = PRIORITY_SUBCATEGORY_ORDER.filter(item => unique.includes(item as any));
+  const remainingItems = unique.filter(item => !PRIORITY_SUBCATEGORY_ORDER.includes(item as any));
+  
+  return [...priorityItems, ...remainingItems];
 };
 
 export const PRODUCT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'] as const;
