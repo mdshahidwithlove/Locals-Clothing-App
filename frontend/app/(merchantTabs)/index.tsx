@@ -702,7 +702,12 @@ export default function MerchantHome() {
             <Text style={{ color: Colors.textSecondary }}>No recent orders</Text>
           ) : (
             recentOrders.map((o) => (
-              <View key={o._id} style={styles.orderItem}>
+              <TouchableOpacity
+                key={o._id}
+                style={styles.orderItem}
+                activeOpacity={0.8}
+                onPress={() => router.push(`/(merchantTabs)/orders/${o._id}` as any)}
+              >
                 <View style={styles.orderHeader}>
                   <Text style={styles.orderNumber}>#{o.orderNumber || String(o._id).slice(-8)}</Text>
                   <View style={[
@@ -727,7 +732,7 @@ export default function MerchantHome() {
                   </View>
                 </View>
                 <Text style={styles.orderTime}>{new Date(o.createdAt).toLocaleString()}</Text>
-              </View>
+              </TouchableOpacity>
             ))
           )}
         </View>

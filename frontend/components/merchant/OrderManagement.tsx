@@ -118,6 +118,19 @@ const OrderManagement: React.FC = () => {
     }
   }, [selectedStatus]);
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await loadOrders();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadOrders]);
+
+  useEffect(() => {
+    loadOrders();
+  }, [loadOrders]);
+
   const handleApproveReturn = async (returnId: string) => {
     try {
       setProcessingOrderId(returnId);
