@@ -246,6 +246,67 @@ export default function MerchantHome() {
         </View>
       </LinearGradient>
 
+      {/* HIGHLIGHTED TOP ALERT BANNER FOR CUSTOMER RETURN REQUESTS */}
+      {merchantReturns.length > 0 && (
+        <TouchableOpacity
+          style={{ marginHorizontal: 16, marginTop: 12, borderRadius: 16, overflow: 'hidden', elevation: 6, shadowColor: '#EF4444', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }}
+          activeOpacity={0.95}
+          onPress={() => router.push({ pathname: '/orders', params: { status: 'Returns' } } as any)}
+        >
+          <LinearGradient
+            colors={['#FF416C', '#FF4B2B']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{ padding: 16 }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="alert-circle" size={24} color="#FFF" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 16, fontWeight: '800', color: '#FFF' }}>
+                  🚨 RETURN REQUEST RECEIVED ({merchantReturns.filter(r => r.status === 'Pending').length} Pending)
+                </Text>
+                <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.9)', marginTop: 2 }}>
+                  A customer has requested a return. Tap to review & respond.
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={22} color="#FFF" />
+            </View>
+
+            {merchantReturns.filter(r => r.status === 'Pending').slice(0, 2).map((item: any) => (
+              <View key={item._id} style={{ backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 12, padding: 12, marginTop: 8 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#111827' }}>Order #{item.order?.orderNumber || item.order?._id?.substring(0, 8)}</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '800', color: '#EF4444' }}>₹{Math.round(item.order?.totalAmount || 0)}</Text>
+                </View>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginTop: 4 }}>👤 Customer: {item.customer?.name} ({item.customer?.phone || 'No phone'})</Text>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#DC2626', marginTop: 2 }}>⚠️ Reason: {item.reason}</Text>
+                {item.notes ? <Text style={{ fontSize: 12, color: '#6B7280', fontStyle: 'italic', marginTop: 2 }}>Notes: "{item.notes}"</Text> : null}
+                {item.refundUpiId ? <Text style={{ fontSize: 12, fontWeight: '700', color: '#2563EB', marginTop: 2 }}>UPI ID: {item.refundUpiId}</Text> : null}
+                
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                  <TouchableOpacity
+                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#10B981', paddingVertical: 8, borderRadius: 8 }}
+                    onPress={() => handleApproveReturn(item._id)}
+                  >
+                    <Ionicons name="checkmark-circle" size={16} color="#FFF" />
+                    <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '700' }}>Approve Return</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#EF4444', paddingVertical: 8, borderRadius: 8 }}
+                    onPress={() => handleRejectReturn(item._id)}
+                  >
+                    <Ionicons name="close-circle" size={16} color="#FFF" />
+                    <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '700' }}>Reject</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </LinearGradient>
+        </TouchableOpacity>
+      )}
+
       {/* Stats - Horizontal Scroll */}
       <ScrollView
         horizontal
@@ -274,7 +335,13 @@ export default function MerchantHome() {
           <Text style={styles.statNumber}>{isLoading ? '...' : stats.pendingOrders}</Text>
           <Text style={styles.statLabel}>Pending Acceptance</Text>
         </TouchableOpacity>
-        {/* Removed settlements earnings card */}
+        <TouchableOpacity style={styles.statCard} activeOpacity={0.8} onPress={() => router.push({ pathname: '/orders', params: { status: 'Returns' } } as any)}>
+          <View style={styles.statIcon}>
+            <Ionicons name="refresh-circle" size={24} color={Colors.error} />
+          </View>
+          <Text style={styles.statNumber}>{isLoading ? '...' : merchantReturns.length}</Text>
+          <Text style={styles.statLabel}>Return Requests</Text>
+        </TouchableOpacity>
         <View style={styles.statCard}>
           <View style={styles.statIcon}>
             <Ionicons name="star" size={24} color={Colors.warning} />

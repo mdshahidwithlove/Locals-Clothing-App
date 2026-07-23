@@ -93,93 +93,71 @@ const OrderManagement: React.FC = () => {
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'amount_desc' | 'amount_asc' | 'payment_pending'>('newest');
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
 
+  const [returns, setReturns] = useState<any[]>([]);
+
   const loadOrders = useCallback(async () => {
     try {
       setLoading(true);
-      const params = selectedStatus ? `?status=${selectedStatus}` : '';
-      const response = await apiClient.get(`/api/v1/merchant-order${params}`);
-      
-      if (response.data.success) {
-        setOrders(response.data.orders);
+      if (selectedStatus === 'Returns') {
+        const response = await apiClient.get('/api/v1/returns/merchant');
+        if (response.data.success) {
+          setReturns(response.data.returns || []);
+        }
+      } else {
+        const params = selectedStatus ? `?status=${selectedStatus}` : '';
+        const response = await apiClient.get(`/api/v1/merchant-order${params}`);
+        if (response.data.success) {
+          setOrders(response.data.orders);
+        }
       }
     } catch (error: any) {
       console.error('Error loading orders:', error);
-      Alert.alert('Error', error.response?.data?.message || 'Failed to load orders');
+      Alert.alert('Error', error.response?.data?.message || 'Failed to load data');
     } finally {
       setLoading(false);
     }
   }, [selectedStatus]);
 
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
+  const handleApproveReturn = async (returnId: string) => {
     try {
-      await loadOrders();
-    } finally {
-      setRefreshing(false);
-    }
-  }, [loadOrders]);
-
-  useEffect(() => {
-    loadOrders();
-  }, [loadOrders]);
-
-  const toggleOrderExpansion = (orderId: string) => {
-    setExpandedOrders(prev => {
-      const setNext = new Set(prev);
-      if (setNext.has(orderId)) setNext.delete(orderId); else setNext.add(orderId);
-      return setNext;
-    });
-  };
-
-  const handleAcceptOrder = async (orderId: string) => {
-    try {
-      setProcessingOrderId(orderId);
-      await apiClient.post(`/api/v1/merchant-order/${orderId}/accept`);
-      Alert.alert('Success', 'Order accepted successfully');
-      await loadOrders();
+      setProcessingOrderId(returnId);
+      const res = await apiClient.post(`/api/v1/returns/${returnId}/approve`);
+      if (res.data?.success) {
+        Alert.alert('Success', 'Return request approved! Delivery partner assigned for pickup.');
+        loadOrders();
+      }
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'Failed to accept order');
+      Alert.alert('Error', error.response?.data?.message || 'Failed to approve return');
     } finally {
       setProcessingOrderId(null);
     }
   };
 
-  const handleRejectOrder = async (orderId: string) => {
-    Alert.alert(
-      'Reject Order',
-      'Are you sure you want to reject this order?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reject',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setProcessingOrderId(orderId);
-              await apiClient.post(`/api/v1/merchant-order/${orderId}/reject`, {
-                reason: 'Item unavailable'
-              });
-              Alert.alert('Success', 'Order rejected');
-              await loadOrders();
-            } catch (error: any) {
-              Alert.alert('Error', error.response?.data?.message || 'Failed to reject order');
-            } finally {
-              setProcessingOrderId(null);
-            }
-          },
-        },
-      ]
-    );
+  const handleRejectReturn = async (returnId: string) => {
+    try {
+      setProcessingOrderId(returnId);
+      const res = await apiClient.post(`/api/v1/returns/${returnId}/reject`);
+      if (res.data?.success) {
+        Alert.alert('Success', 'Return request rejected.');
+        loadOrders();
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.message || 'Failed to reject return');
+    } finally {
+      setProcessingOrderId(null);
+    }
   };
 
-  const handleMarkReady = async (orderId: string) => {
+  const handleCompleteRefund = async (returnId: string) => {
     try {
-      setProcessingOrderId(orderId);
-      await apiClient.post(`/api/v1/merchant-order/${orderId}/ready`);
-      Alert.alert('Success', 'Order marked as ready for pickup');
-      await loadOrders();
+      setProcessingOrderId(returnId);
+      const res = await apiClient.post(`/api/v1/returns/${returnId}/complete-refund`);
+      if (res.data?.success) {
+        Alert.alert('Success', 'Refund marked as completed.');
+        loadOrders();
+      }
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'Failed to mark order as ready');
+      Alert.alert('Error', error.response?.data?.message || 'Failed to complete refund');
     } finally {
       setProcessingOrderId(null);
     }
@@ -187,6 +165,7 @@ const OrderManagement: React.FC = () => {
 
   const statusFilters = [
     { key: null, label: 'All', icon: 'apps-outline' },
+    { key: 'Returns', label: 'Returns', icon: 'refresh-circle-outline' },
     { key: 'Pending', label: 'Pending', icon: 'time-outline' },
     { key: 'Accepted', label: 'Accepted', icon: 'checkmark-circle-outline' },
     { key: 'Processing', label: 'Processing', icon: 'sync-outline' },
@@ -330,7 +309,62 @@ const OrderManagement: React.FC = () => {
         }
         showsVerticalScrollIndicator={false}
       >
-        {(sortedOrders.length === 0) ? (
+        {selectedStatus === 'Returns' ? (
+          returns.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIconContainer}>
+                <Ionicons name="refresh-circle-outline" size={56} color={Colors.textSecondary} />
+              </View>
+              <Text style={styles.emptyTitle}>No Return Requests</Text>
+              <Text style={styles.emptySubtitle}>Customer return requests will appear here</Text>
+            </View>
+          ) : (
+            <View style={styles.ordersList}>
+              {returns.map((ret) => (
+                <View key={ret._id} style={styles.orderCard}>
+                  <View style={styles.orderIdRow}>
+                    <View style={styles.orderIdLeft}>
+                      <Text style={styles.orderIdLabel}>Order:</Text>
+                      <Text style={styles.orderIdValue}>#{ret.order?.orderNumber || ret.order?._id?.slice(-8)}</Text>
+                    </View>
+                    <View style={[styles.statusPill, { backgroundColor: ret.status === 'Approved' ? Colors.success : ret.status === 'Pending' ? Colors.warning : Colors.error }]}>
+                      <Text style={styles.statusText}>{ret.status}</Text>
+                    </View>
+                  </View>
+
+                  <View style={{ paddingVertical: 8 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: Colors.textPrimary }}>👤 Customer: {ret.customer?.name} ({ret.customer?.phone})</Text>
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.error, marginTop: 4 }}>⚠️ Reason: {ret.reason}</Text>
+                    {ret.notes ? <Text style={{ fontSize: 12, color: Colors.textSecondary, fontStyle: 'italic', marginTop: 2 }}>Notes: "{ret.notes}"</Text> : null}
+                    {ret.refundUpiId ? <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.primary, marginTop: 4 }}>Refund UPI ID: {ret.refundUpiId}</Text> : null}
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: Colors.textPrimary, marginTop: 4 }}>Amount: ₹{Math.round(ret.order?.totalAmount || 0)} ({ret.order?.paymentMethod})</Text>
+                  </View>
+
+                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                    {ret.status === 'Pending' && (
+                      <>
+                        <TouchableOpacity style={[styles.acceptBtn, { flex: 1, backgroundColor: Colors.success }]} onPress={() => handleApproveReturn(ret._id)}>
+                          <Ionicons name="checkmark-circle" size={16} color="#FFF" />
+                          <Text style={styles.btnText}>Approve Return</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.rejectBtn, { flex: 1, backgroundColor: Colors.error }]} onPress={() => handleRejectReturn(ret._id)}>
+                          <Ionicons name="close-circle" size={16} color="#FFF" />
+                          <Text style={styles.btnText}>Reject</Text>
+                        </TouchableOpacity>
+                      </>
+                    )}
+                    {ret.status === 'Approved' && ret.refundStatus !== 'Completed' && (
+                      <TouchableOpacity style={[styles.acceptBtn, { flex: 1, backgroundColor: Colors.primary }]} onPress={() => handleCompleteRefund(ret._id)}>
+                        <Ionicons name="cash" size={16} color="#FFF" />
+                        <Text style={styles.btnText}>Mark Refund Completed</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+              ))}
+            </View>
+          )
+        ) : sortedOrders.length === 0 ? (
           <View style={styles.emptyContainer}>
             <View style={styles.emptyIconContainer}>
               <Ionicons name="receipt-outline" size={56} color={Colors.textSecondary} />
