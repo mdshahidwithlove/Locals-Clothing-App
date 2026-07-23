@@ -81,31 +81,23 @@ export const getImageForSubcategory = (subcategory: string): ImageSourcePropType
     Tops: require('@/assets/images/categories/tops.png'),
     Jackets: require('@/assets/images/categories/jackets.png'),
     Sarees: require('@/assets/images/categories/sarees.png'),
+    Kurtas: require('@/assets/images/categories/kurtas.png'),
+    Hoodies: require('@/assets/images/categories/hoodies.png'),
+    Sweatshirts: require('@/assets/images/categories/sweatshirts.png'),
+    Sweaters: require('@/assets/images/categories/sweaters.png'),
+    Cardigans: require('@/assets/images/categories/cardigans.png'),
+    Skirts: require('@/assets/images/categories/skirts.png'),
+    Leggings: require('@/assets/images/categories/leggings.png'),
+    Blazers: require('@/assets/images/categories/blazers.png'),
+    Coats: require('@/assets/images/categories/coats.png'),
+    Suits: require('@/assets/images/categories/suits.png'),
+    Sleepwear: require('@/assets/images/categories/sleepwear.png'),
+    Activewear: require('@/assets/images/categories/activewear.png'),
+    Swimwear: require('@/assets/images/categories/swimwear.png'),
+    'Ethnic Wear': require('@/assets/images/categories/ethnicwear.png'),
   };
 
-  if (local3DImages[subcategory]) {
-    return local3DImages[subcategory];
-  }
-
-  // Background-free 3D cutouts for all remaining subcategories
-  const imageMap: { [key: string]: ImageSourcePropType } = {
-    Kurtas: remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/kurtas.png'),
-    Hoodies: remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/hoodies.png'),
-    Sweatshirts: remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/sweatshirts.png'),
-    Sweaters: remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/sweaters.png'),
-    Cardigans: remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/cardigans.png'),
-    Leggings: remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/leggings.png'),
-    Skirts: remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/skirts.png'),
-    Blazers: remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/blazers.png'),
-    Coats: remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/coats.png'),
-    Suits: remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/suits.png'),
-    Sleepwear: remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/sleepwear.png'),
-    Activewear: remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/activewear.png'),
-    Swimwear: remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/swimwear.png'),
-    'Ethnic Wear': remote('https://yfqitnpswuhzwjdbgyfx.supabase.co/storage/v1/object/public/locals-bucket/categories/ethnicwear.png'),
-  };
-  
-  return imageMap[subcategory] || require('@/assets/images/categories/tshirts.png');
+  return local3DImages[subcategory] || require('@/assets/images/categories/tshirts.png');
 };
 
 const CategoryIcons: React.FC<CategoryIconsProps> = ({ 
