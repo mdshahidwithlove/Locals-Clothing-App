@@ -8,6 +8,9 @@ import {
   ActivityIndicator,
   Dimensions,
   Platform,
+  Linking,
+  Modal,
+  ScrollView,
 } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE, UrlTile } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
@@ -231,6 +234,38 @@ const NavigationMapScreen: React.FC = () => {
     return distance;
   };
 
+  const [routeSteps, setRouteSteps] = useState<any[]>([]);
+  const [showStepsModal, setShowStepsModal] = useState(false);
+
+  const openGoogleMapsNavigation = () => {
+    const destObj = navigationType === 'pickup' ? (geocodedPickup || pickupLocation) : (geocodedDelivery || deliveryLocation);
+    let lat = destObj?.lat || destObj?.latitude;
+    let lng = destObj?.lng || destObj?.longitude;
+
+    if (lat && lng) {
+      const navUrl = Platform.OS === 'android'
+        ? `google.navigation:q=${lat},${lng}&mode=d`
+        : `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+      
+      const webUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+
+      Linking.canOpenURL(navUrl).then((supported) => {
+        if (supported) {
+          Linking.openURL(navUrl);
+        } else {
+          Linking.openURL(webUrl);
+        }
+      }).catch(() => {
+        Linking.openURL(webUrl);
+      });
+    } else if (destination?.address) {
+      const webUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination.address)}&travelmode=driving`;
+      Linking.openURL(webUrl);
+    } else {
+      Alert.alert("Error", "Location coordinates not available for turn-by-turn navigation.");
+    }
+  };
+
   // Fetch route from backend API
   const fetchDirections = async (origin: LocationCoords, destination: LocationCoords): Promise<LocationCoords[] | null> => {
     try {
@@ -248,20 +283,20 @@ const NavigationMapScreen: React.FC = () => {
       });
 
       if (response.data.success && response.data.data) {
-        const { polyline, distance: distData, duration: durData } = response.data.data;
+        const { polyline, distance: distData, duration: durData, steps } = response.data.data;
         
         console.log('Directions API success:', {
           distance: distData.text,
           duration: durData.text,
-          polylineLength: polyline.length
+          polylineLength: polyline.length,
+          stepsCount: steps?.length || 0
         });
         
         // Decode polyline to get route coordinates
         const routePoints = decodePolyline(polyline);
         
-        console.log('Decoded route points:', routePoints.length);
-        
         setRouteCoordinates(routePoints);
+        setRouteSteps(steps || []);
         setDistance(distData.value / 1000); // Convert meters to km
         setDuration(durData.value / 60); // Convert seconds to minutes
         
@@ -615,7 +650,7 @@ const NavigationMapScreen: React.FC = () => {
 
       {/* Top Header */}
       <LinearGradient
-        colors={['rgba(0,0,0,0.7)', 'transparent']}
+        colors={['rgba(0,0,0,0.85)', 'transparent']}
         style={styles.topGradient}
       >
         <View style={styles.header}>
@@ -626,12 +661,27 @@ const NavigationMapScreen: React.FC = () => {
             <Text style={styles.headerTitle}>
               {navigationType === 'pickup' ? 'Navigate to Pickup' : 'Navigate to Delivery'}
             </Text>
-            <Text style={styles.headerSubtitle}>
+            <Text style={styles.headerSubtitle} numberOfLines={1}>
               {destination?.address || 'Destination'}
             </Text>
           </View>
-          <View style={styles.headerRight} />
+          <TouchableOpacity onPress={openGoogleMapsNavigation} style={[styles.backButton, { backgroundColor: '#10B981' }]}>
+            <Ionicons name="map" size={20} color="#FFFFFF" />
+          </TouchableOpacity>
         </View>
+
+        {/* Immediate Next Turn Maneuver Banner */}
+        {routeSteps.length > 0 && (
+          <View style={styles.nextTurnBanner}>
+            <Ionicons name="navigate-circle" size={24} color="#FFD700" />
+            <View style={{ flex: 1, marginLeft: 8 }}>
+              <Text style={styles.nextTurnTitle}>Next Turn Instruction:</Text>
+              <Text style={styles.nextTurnText} numberOfLines={1}>
+                {routeSteps[0].instruction} {routeSteps[0].distance ? `(${routeSteps[0].distance})` : ''}
+              </Text>
+            </View>
+          </View>
+        )}
       </LinearGradient>
 
       {/* Navigation Info Card */}
@@ -647,7 +697,7 @@ const NavigationMapScreen: React.FC = () => {
               <View style={styles.navInfoContent}>
                 <ActivityIndicator size="large" color="#FFFFFF" />
                 <Text style={[styles.navInfoLabel, { marginLeft: 10 }]}>
-                  Calculating route...
+                  Calculating turn-by-turn route...
                 </Text>
               </View>
             ) : (
@@ -673,6 +723,41 @@ const NavigationMapScreen: React.FC = () => {
         </View>
       )}
 
+      {/* Bottom Floating Navigation Action Bar */}
+      <View style={styles.bottomNavContainer}>
+        <TouchableOpacity
+          style={styles.googleMapsNavButton}
+          activeOpacity={0.9}
+          onPress={openGoogleMapsNavigation}
+        >
+          <LinearGradient
+            colors={['#10B981', '#059669']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.googleMapsNavGradient}
+          >
+            <Ionicons name="compass-outline" size={26} color="#FFFFFF" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.googleNavTitle}>START GOOGLE MAPS NAVIGATION</Text>
+              <Text style={styles.googleNavSub}>Voice Turn-by-Turn GPS Driving Mode</Text>
+            </View>
+            <Ionicons name="open-outline" size={22} color="#FFFFFF" />
+          </LinearGradient>
+        </TouchableOpacity>
+
+        {routeSteps.length > 0 && (
+          <TouchableOpacity
+            style={styles.stepsButton}
+            onPress={() => setShowStepsModal(true)}
+          >
+            <Ionicons name="list" size={18} color={Colors.textPrimary} />
+            <Text style={styles.stepsButtonText}>
+              Turn-by-Turn Route Steps ({routeSteps.length})
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
       {/* Map Controls */}
       <View style={styles.mapControls}>
         <TouchableOpacity style={styles.mapControlButton} onPress={centerOnUser}>
@@ -689,6 +774,56 @@ const NavigationMapScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Turn-by-Turn Steps Modal */}
+      <Modal
+        visible={showStepsModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowStepsModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>Turn-by-Turn Directions</Text>
+                <Text style={styles.modalSub}>{distance.toFixed(1)} km • ~{Math.round(duration)} mins</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowStepsModal(false)} style={styles.closeBtn}>
+                <Ionicons name="close" size={22} color={Colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ maxHeight: 400, marginTop: 12 }}>
+              {routeSteps.map((step: any, idx: number) => (
+                <View key={idx} style={styles.stepRow}>
+                  <View style={styles.stepBadge}>
+                    <Ionicons
+                      name={
+                        step.type === 'arrive' ? 'pin' :
+                        step.type === 'depart' ? 'navigate' :
+                        step.modifier?.includes('right') ? 'arrow-forward' :
+                        step.modifier?.includes('left') ? 'arrow-back' : 'arrow-up'
+                      }
+                      size={18}
+                      color="#FFF"
+                    />
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={styles.stepInstruction}>{step.instruction}</Text>
+                    {step.distance ? <Text style={styles.stepDist}>{step.distance}</Text> : null}
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+
+            <TouchableOpacity style={styles.modalNavBtn} onPress={() => { setShowStepsModal(false); openGoogleMapsNavigation(); }}>
+              <Ionicons name="map" size={20} color="#FFF" />
+              <Text style={styles.modalNavBtnText}>Open Google Maps Live Navigation</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Address Info Card - Show when coordinates not available */}
       {!destination?.lat || !destination?.lng ? (
@@ -884,6 +1019,162 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     lineHeight: 16,
+  },
+  nextTurnBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(17, 24, 39, 0.95)',
+    marginHorizontal: 20,
+    marginTop: 4,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#374151',
+  },
+  nextTurnTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#9CA3AF',
+    textTransform: 'uppercase',
+  },
+  nextTurnText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginTop: 2,
+  },
+  bottomNavContainer: {
+    position: 'absolute',
+    left: 20,
+    right: 80,
+    bottom: 30,
+    gap: 8,
+  },
+  googleMapsNavButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    elevation: 8,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+  },
+  googleMapsNavGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  googleNavTitle: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  googleNavSub: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.9)',
+    marginTop: 1,
+  },
+  stepsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  stepsButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  modalSub: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  stepBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#3B82F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepInstruction: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  stepDist: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  modalNavBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#10B981',
+    paddingVertical: 14,
+    borderRadius: 14,
+    marginTop: 16,
+  },
+  modalNavBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
   },
 });
 
