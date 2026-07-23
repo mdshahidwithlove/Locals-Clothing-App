@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOnlineStatus } from '@/contexts/OnlineStatusContext';
 import apiClient from '@/api/client';
 import { useRouter } from 'expo-router';
+import { Colors } from '@/constants/colors';
 
 export default function DeliveryHome() {
   const { user } = useAuth();
