@@ -69,6 +69,16 @@ export function extractCoordinatesFromMapLink(mapLink: string): { lat: number; l
       };
     }
 
+    // Pattern 6: Any raw string containing decimal lat,lng (e.g. 30.209718, 74.936572)
+    const rawPattern = /(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)/;
+    const rawMatch = mapLink.match(rawPattern);
+    if (rawMatch) {
+      return {
+        lat: parseFloat(rawMatch[1]!),
+        lng: parseFloat(rawMatch[2]!)
+      };
+    }
+
     return null;
   } catch (error) {
     console.error('Error extracting coordinates from map link:', error);
@@ -77,41 +87,55 @@ export function extractCoordinatesFromMapLink(mapLink: string): { lat: number; l
 }
 
 /**
- * Geocode address to coordinates using Google Geocoding API
+ * Geocode address to coordinates using Google Geocoding API with OpenStreetMap Nominatim fallback
  */
 export async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
   if (!address || typeof address !== 'string' || address.trim().length === 0) {
     return null;
   }
 
+  // 1. Try Google Maps API if key is present
   const apiKey = getConfig("GOOGLE_MAPS_API_KEY");
-  
-  if (!apiKey) {
-    console.warn('Google Maps API key not configured. Geocoding disabled.');
-    return null;
+  if (apiKey) {
+    try {
+      const encodedAddress = encodeURIComponent(address);
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodedAddress}&key=${apiKey}`;
+      const response = await fetch(url);
+      const data: any = await response.json();
+      
+      if (data.status === 'OK' && data.results && data.results.length > 0) {
+        const location = data.results[0].geometry.location;
+        return {
+          lat: location.lat,
+          lng: location.lng
+        };
+      }
+    } catch (error) {
+      console.error('Error using Google geocoding:', error);
+    }
   }
 
+  // 2. Free Fallback: OpenStreetMap Nominatim
   try {
     const encodedAddress = encodeURIComponent(address);
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodedAddress}&key=${apiKey}`;
-    
-    const response = await fetch(url);
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodedAddress}&format=json&limit=1`;
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'LocalsClothingApp/1.0 (contact@localsclothing.app)'
+      }
+    });
     const data: any = await response.json();
-    
-    if (data.status === 'OK' && data.results && data.results.length > 0) {
-      const location = data.results[0].geometry.location;
+    if (Array.isArray(data) && data.length > 0 && data[0].lat && data[0].lon) {
       return {
-        lat: location.lat,
-        lng: location.lng
+        lat: parseFloat(data[0].lat),
+        lng: parseFloat(data[0].lon)
       };
-    } else {
-      console.log(`Geocoding failed for address: ${address}. Status: ${data.status}`);
-      return null;
     }
   } catch (error) {
-    console.error('Error geocoding address:', error);
-    return null;
+    console.error('Free Nominatim geocoding error:', error);
   }
+
+  return null;
 }
 
 /**

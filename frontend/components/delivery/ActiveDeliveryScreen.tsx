@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/constants/colors';
 import { useLocationTracking } from '@/hooks/useLocationTracking';
 import apiClient from '@/api/client';
+import { useRouter } from 'expo-router';
 
 interface ActiveDeliveryScreenProps {
   delivery: any;
@@ -26,6 +27,7 @@ interface ActiveDeliveryScreenProps {
 const formatINR = (value: number) => Math.round(value).toLocaleString('en-IN', { maximumFractionDigits: 0 });
 
 const ActiveDeliveryScreen: React.FC<ActiveDeliveryScreenProps> = ({ delivery, onClose, onRefresh }) => {
+  const router = useRouter();
   const [isUpdating, setIsUpdating] = useState(false);
   const [mapRegion, setMapRegion] = useState<any>(null);
   
@@ -38,6 +40,37 @@ const ActiveDeliveryScreen: React.FC<ActiveDeliveryScreenProps> = ({ delivery, o
   } = useLocationTracking({ enableTracking: true });
 
   const order = typeof delivery.order === 'object' ? delivery.order : null;
+
+  const handleStartMapNavigation = (locationType: 'pickup' | 'delivery') => {
+    const store = (delivery.order as any)?.store;
+    const isReturn = delivery.deliveryType === 'RETURN';
+
+    const customerCoords = {
+      lat: (delivery.order as any)?.deliveryLocation?.lat,
+      lng: (delivery.order as any)?.deliveryLocation?.lng,
+      address: delivery.deliveryAddress || (delivery.order as any)?.shippingAddress || '',
+    };
+
+    const storeCoords = {
+      lat: (delivery.order as any)?.pickupLocation?.lat,
+      lng: (delivery.order as any)?.pickupLocation?.lng,
+      address: delivery.pickupAddress || store?.address || '',
+      mapLink: store?.mapLink,
+    };
+
+    const pickupLocation = isReturn ? customerCoords : storeCoords;
+    const deliveryLocation = isReturn ? storeCoords : customerCoords;
+
+    router.push({
+      pathname: '/(deliveryTabs)/navigation-map',
+      params: {
+        orderId: delivery._id,
+        pickupLocation: JSON.stringify(pickupLocation),
+        deliveryLocation: JSON.stringify(deliveryLocation),
+        navigationType: locationType,
+      },
+    } as any);
+  };
 
   // Set initial map region based on pickup and delivery locations
   useEffect(() => {
@@ -134,7 +167,7 @@ const ActiveDeliveryScreen: React.FC<ActiveDeliveryScreenProps> = ({ delivery, o
           <>
             <TouchableOpacity
               style={styles.navigationButton}
-              onPress={() => openNavigation(delivery.pickupAddress)}
+              onPress={() => handleStartMapNavigation('pickup')}
             >
               <Ionicons name="navigate-circle" size={24} color={Colors.primary} />
               <Text style={styles.navigationButtonText}>Navigate to Pickup</Text>
@@ -157,7 +190,7 @@ const ActiveDeliveryScreen: React.FC<ActiveDeliveryScreenProps> = ({ delivery, o
           <>
             <TouchableOpacity
               style={styles.navigationButton}
-              onPress={() => openNavigation(delivery.deliveryAddress)}
+              onPress={() => handleStartMapNavigation('delivery')}
             >
               <Ionicons name="navigate-circle" size={24} color={Colors.primary} />
               <Text style={styles.navigationButtonText}>Navigate to Delivery</Text>
@@ -180,7 +213,7 @@ const ActiveDeliveryScreen: React.FC<ActiveDeliveryScreenProps> = ({ delivery, o
           <>
             <TouchableOpacity
               style={styles.navigationButton}
-              onPress={() => openNavigation(delivery.deliveryAddress)}
+              onPress={() => handleStartMapNavigation('delivery')}
             >
               <Ionicons name="navigate-circle" size={24} color={Colors.primary} />
               <Text style={styles.navigationButtonText}>Continue Navigation</Text>

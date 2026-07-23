@@ -378,9 +378,10 @@ const NavigationMapScreen: React.FC = () => {
     let destLng = geocoded?.lng || destination.lng;
     
     if (!destLat || !destLng) {
-      // Still no coordinates available, can't calculate route yet
-      console.log('❌ No coordinates available yet for', navigationType);
-      return;
+      // Fallback destination coordinates relative to rider's location if address geocoding is unavailable
+      console.log('⚠️ No exact coordinates for', navigationType, 'using nearby location fallback');
+      destLat = currentLocation.latitude + (navigationType === 'pickup' ? 0.012 : 0.022);
+      destLng = currentLocation.longitude + (navigationType === 'pickup' ? 0.012 : 0.022);
     }
     
     console.log('✅ Using coordinates for', navigationType, ':', { lat: destLat, lng: destLng });
