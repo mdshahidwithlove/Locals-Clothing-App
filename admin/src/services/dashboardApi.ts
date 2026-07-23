@@ -175,7 +175,7 @@ export async function createStoreSettlement(storeId: string, data: {
 }
 
 // ─── Withdrawals ────────────────────────────────────────────────────────────
-export async function fetchAdminWithdrawals(params?: { status?: string }) {
+export async function fetchAdminWithdrawals(params?: { status?: string; role?: string; period?: string }) {
   const res = await api.get('/api/v1/admin/withdrawals', { params });
   return res.data.requests;
 }

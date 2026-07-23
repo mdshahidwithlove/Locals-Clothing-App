@@ -1,8 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { 
-  Coins, 
   CheckCircle2, 
-  AlertTriangle,
   Search,
   Check,
   X
@@ -30,6 +28,8 @@ export default function WithdrawalsSection() {
   
   // Filters
   const [statusFilter, setStatusFilter] = useState('Pending'); // Pending, Approved, Rejected, all
+  const [roleFilter, setRoleFilter] = useState('all'); // all, Delivery (Rider), Merchant (Vendor)
+  const [periodFilter, setPeriodFilter] = useState('all'); // all, today, weekly, monthly
   const [searchUser, setSearchUser] = useState('');
 
   const loadData = useCallback(async () => {
@@ -66,21 +66,51 @@ export default function WithdrawalsSection() {
     }
   };
 
+  // Helper date function for period filtering
+  const isWithinPeriod = (dateStr: string, period: string) => {
+    if (period === 'all') return true;
+    if (!dateStr) return false;
+    const date = new Date(dateStr);
+    const now = new Date();
+
+    if (period === 'today') {
+      return date.toDateString() === now.toDateString();
+    }
+
+    if (period === 'weekly') {
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+      return date >= startOfWeek;
+    }
+
+    if (period === 'monthly') {
+      return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+    }
+
+    return true;
+  };
+
   // Calculations for summary stats
-  const pendingCount = requests.filter(r => r.status === 'Pending').length;
-  const pendingAmount = requests.filter(r => r.status === 'Pending').reduce((sum, r) => sum + r.amount, 0);
-  const approvedCount = requests.filter(r => r.status === 'Approved').length;
-  const approvedAmount = requests.filter(r => r.status === 'Approved').reduce((sum, r) => sum + r.amount, 0);
+  const riderPending = requests.filter(r => r.status === 'Pending' && r.user?.role === 'Delivery');
+  const vendorPending = requests.filter(r => r.status === 'Pending' && r.user?.role === 'Merchant');
+  const approvedRequests = requests.filter(r => r.status === 'Approved');
+
+  const riderPendingAmt = riderPending.reduce((sum, r) => sum + (r.amount || 0), 0);
+  const vendorPendingAmt = vendorPending.reduce((sum, r) => sum + (r.amount || 0), 0);
+  const approvedAmt = approvedRequests.reduce((sum, r) => sum + (r.amount || 0), 0);
 
   // Apply filters
   const filteredRequests = requests.filter(r => {
     const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
+    const matchesRole = roleFilter === 'all' || r.user?.role === roleFilter;
+    const matchesPeriod = isWithinPeriod(r.createdAt, periodFilter);
     const matchesSearch = 
       !searchUser || 
       r.user?.name?.toLowerCase().includes(searchUser.toLowerCase()) || 
       r.user?.phone?.includes(searchUser) ||
       r.user?.email?.toLowerCase().includes(searchUser.toLowerCase());
-    return matchesStatus && matchesSearch;
+    return matchesStatus && matchesRole && matchesPeriod && matchesSearch;
   });
 
   if (loading && requests.length === 0) {
@@ -103,71 +133,78 @@ export default function WithdrawalsSection() {
     <PageShell>
       <AdminPageHeader
         title="Withdrawal & Payout Requests"
-        description="Verify and approve withdrawal requests submitted by merchants (sellers) and delivery partners (riders)."
+        description="Verify and approve payout requests submitted by vendors (sellers) and riders (delivery partners)."
       />
 
       {/* Summary Cards */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 mb-8">
-        {/* Card 1: Pending Requests */}
-        <div className="rounded-2xl border border-amber-100 bg-gradient-to-br from-amber-50/30 to-white p-5 shadow-sm">
+        {/* Card 1: Rider Pending */}
+        <div className="rounded-2xl border border-sky-100 bg-gradient-to-br from-sky-50/40 to-white p-5 shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
-              <AlertTriangle className="h-5 w-5" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-100 text-sky-700 font-bold text-lg">
+              🏍️
             </div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-stone-500">
-              Pending Withdrawals
-            </p>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-stone-500">
+                Rider Pending Payouts
+              </p>
+              <p className="text-2xl font-extrabold tabular-nums text-sky-800">
+                {fmt(riderPendingAmt)}
+              </p>
+            </div>
           </div>
-          <p className="mt-4 text-3xl font-extrabold tabular-nums text-amber-700">
-            {fmt(pendingAmount)}
-          </p>
-          <p className="mt-1 text-xs text-stone-500">
-            {pendingCount} request(s) awaiting approval
+          <p className="mt-2 text-xs text-stone-500 font-medium">
+            {riderPending.length} delivery partner request(s) pending
           </p>
         </div>
 
-        {/* Card 2: Settled/Approved Requests */}
-        <div className="rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50/30 to-white p-5 shadow-sm">
+        {/* Card 2: Vendor Pending */}
+        <div className="rounded-2xl border border-amber-100 bg-gradient-to-br from-amber-50/40 to-white p-5 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700 font-bold text-lg">
+              🏪
+            </div>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-stone-500">
+                Vendor Pending Payouts
+              </p>
+              <p className="text-2xl font-extrabold tabular-nums text-amber-800">
+                {fmt(vendorPendingAmt)}
+              </p>
+            </div>
+          </div>
+          <p className="mt-2 text-xs text-stone-500 font-medium">
+            {vendorPending.length} store merchant request(s) pending
+          </p>
+        </div>
+
+        {/* Card 3: Settled Total */}
+        <div className="rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50/40 to-white p-5 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800">
               <CheckCircle2 className="h-5 w-5" />
             </div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-stone-500">
-              Approved / Settled
-            </p>
-          </div>
-          <p className="mt-4 text-3xl font-extrabold tabular-nums text-emerald-800">
-            {fmt(approvedAmount)}
-          </p>
-          <p className="mt-1 text-xs text-stone-500">
-            {approvedCount} request(s) processed
-          </p>
-        </div>
-
-        {/* Card 3: Total Requests Count */}
-        <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-stone-100 text-stone-700">
-              <Coins className="h-5 w-5" />
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-stone-500">
+                Total Approved & Settled
+              </p>
+              <p className="text-2xl font-extrabold tabular-nums text-emerald-800">
+                {fmt(approvedAmt)}
+              </p>
             </div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-stone-500">
-              Total Request Count
-            </p>
           </div>
-          <p className="mt-4 text-3xl font-extrabold tabular-nums text-stone-900">
-            {requests.length}
-          </p>
-          <p className="mt-1 text-xs text-stone-500">
-            Cumulative withdrawal history
+          <p className="mt-2 text-xs text-stone-500 font-medium">
+            {approvedRequests.length} payout(s) processed
           </p>
         </div>
       </div>
 
       <PanelCard 
         title="Payout Requests Ledger" 
-        description="Verify user bank accounts and UPI IDs before sending money and clicking Approve."
+        description="Filter requests by User Role (Rider/Vendor), Time Period (Today/Weekly/Monthly), and Status."
         action={
-          <div className="flex gap-4 items-center">
+          <div className="flex flex-wrap gap-3 items-center">
+            {/* Search Input */}
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-stone-400" />
               <input
@@ -175,9 +212,56 @@ export default function WithdrawalsSection() {
                 placeholder="Search user..."
                 value={searchUser}
                 onChange={e => setSearchUser(e.target.value)}
-                className="w-48 rounded-lg border border-stone-200 bg-stone-50 py-1.5 pl-8 pr-3 text-xs outline-none focus:border-amber-500 focus:bg-white"
+                className="w-40 rounded-lg border border-stone-200 bg-stone-50 py-1.5 pl-8 pr-3 text-xs outline-none focus:border-amber-500 focus:bg-white"
               />
             </div>
+
+            {/* Role Filter Tabs */}
+            <div className="flex items-center rounded-lg border border-stone-200 bg-stone-100 p-0.5">
+              {[
+                { value: 'all', label: 'All Users' },
+                { value: 'Delivery', label: '🏍️ Rider' },
+                { value: 'Merchant', label: '🏪 Vendor' },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setRoleFilter(opt.value)}
+                  className={cn(
+                    'rounded-md px-2.5 py-1 text-xs font-semibold transition-all',
+                    roleFilter === opt.value
+                      ? 'bg-white text-stone-900 shadow-sm'
+                      : 'text-stone-600 hover:text-stone-900'
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Period Filter Tabs */}
+            <div className="flex items-center rounded-lg border border-stone-200 bg-stone-100 p-0.5">
+              {[
+                { value: 'all', label: 'All Time' },
+                { value: 'today', label: '📅 Today' },
+                { value: 'weekly', label: '🗓️ This Week' },
+                { value: 'monthly', label: '📆 This Month' },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setPeriodFilter(opt.value)}
+                  className={cn(
+                    'rounded-md px-2.5 py-1 text-xs font-semibold transition-all',
+                    periodFilter === opt.value
+                      ? 'bg-amber-600 text-white shadow-sm'
+                      : 'text-stone-600 hover:text-stone-900'
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Status Filter */}
             <SegmentedControl
               value={statusFilter}
               onChange={setStatusFilter}
@@ -193,7 +277,7 @@ export default function WithdrawalsSection() {
       >
         {filteredRequests.length === 0 ? (
           <div className="py-12">
-            <EmptyState title="No withdrawal requests found matching filters" />
+            <EmptyState title="No withdrawal requests found matching selected filters" />
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -210,12 +294,23 @@ export default function WithdrawalsSection() {
               </thead>
               <tbody className="divide-y divide-stone-100">
                 {filteredRequests.map((r: any) => {
+                  const isRider = r.user?.role === 'Delivery';
+                  const isVendor = r.user?.role === 'Merchant';
                   return (
                     <tr key={r._id} className="hover:bg-stone-50/80 transition-colors">
                       <td className="px-4 py-3">
-                        <div>
-                          <p className="font-semibold text-stone-900">{r.user?.name || 'User'}</p>
-                          <p className="text-xs text-stone-500 capitalize">{r.user?.role || ''} • {r.user?.phone || ''}</p>
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">{isRider ? '🏍️' : isVendor ? '🏪' : '👤'}</span>
+                          <div>
+                            <p className="font-semibold text-stone-900">{r.user?.name || 'User'}</p>
+                            <span className={cn(
+                              'inline-block px-1.5 py-0.2 text-[10px] font-bold rounded uppercase',
+                              isRider ? 'bg-sky-100 text-sky-800' : isVendor ? 'bg-amber-100 text-amber-800' : 'bg-stone-100 text-stone-700'
+                            )}>
+                              {isRider ? 'Rider (Delivery)' : isVendor ? 'Vendor (Merchant)' : r.user?.role || 'User'}
+                            </span>
+                            <p className="text-xs text-stone-500">{r.user?.phone || ''}</p>
+                          </div>
                         </div>
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 font-bold tabular-nums text-stone-900">
@@ -276,7 +371,7 @@ export default function WithdrawalsSection() {
                             <button
                               onClick={() => handleAction(r._id, 'Rejected')}
                               disabled={processingId === r._id}
-                              className="rounded-lg bg-red-650 hover:bg-red-750 active:bg-red-800 text-white p-1.5 text-xs font-bold transition-all shadow-sm"
+                              className="rounded-lg bg-red-600 hover:bg-red-700 active:bg-red-800 text-white p-1.5 text-xs font-bold transition-all shadow-sm"
                               title="Reject"
                             >
                               <X className="h-4 w-4" />

@@ -1786,16 +1786,37 @@ export class AdminService {
     };
   }
 
-  // Get all user withdrawal requests
-  static async getAllWithdrawals(status?: string) {
+  // Get all user withdrawal requests with role, status, and period filters
+  static async getAllWithdrawals(status?: string, role?: string, period?: string) {
     const WithdrawalRequest = require('../Models/withdrawalRequestModel').default;
     const filter: any = {};
-    if (status) {
+    if (status && status !== 'all') {
       filter.status = status;
     }
-    return await WithdrawalRequest.find(filter)
+    if (period && period !== 'all') {
+      const now = new Date();
+      if (period === 'today') {
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        filter.createdAt = { $gte: startOfToday };
+      } else if (period === 'weekly') {
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay());
+        startOfWeek.setHours(0, 0, 0, 0);
+        filter.createdAt = { $gte: startOfWeek };
+      } else if (period === 'monthly') {
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        filter.createdAt = { $gte: startOfMonth };
+      }
+    }
+
+    const requests = await WithdrawalRequest.find(filter)
       .populate("user", "name phone email role")
       .sort({ createdAt: -1 });
+
+    if (role && role !== 'all') {
+      return requests.filter((r: any) => r.user?.role === role);
+    }
+    return requests;
   }
 
   // Update withdrawal request status

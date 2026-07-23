@@ -885,7 +885,9 @@ export async function createStoreSettlement(req: CustomRequest, res: Response): 
 export async function getAdminWithdrawals(req: Request, res: Response): Promise<Response> {
   try {
     const status = req.query.status as string;
-    const requests = await AdminService.getAllWithdrawals(status);
+    const role = req.query.role as string;
+    const period = req.query.period as string;
+    const requests = await AdminService.getAllWithdrawals(status, role, period);
     return res.status(200).json({
       success: true,
       requests
