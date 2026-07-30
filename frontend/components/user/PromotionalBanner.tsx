@@ -7,7 +7,6 @@ import {
   Dimensions,
   ScrollView,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import LocationSelector from './LocationSelector';
 import SearchBar from './SearchBar';
 
@@ -124,12 +123,6 @@ const PromotionalBanner: React.FC<PromotionalBannerProps> = ({
               style={styles.fullBannerImage}
               resizeMode="cover"
             />
-            {/* Subtle Gradient Overlay so header address & search bar remain 100% legible */}
-            <LinearGradient
-              colors={['rgba(0, 0, 0, 0.45)', 'rgba(0, 0, 0, 0.05)', 'rgba(0, 0, 0, 0.35)']}
-              locations={[0, 0.5, 1]}
-              style={styles.gradientOverlay}
-            />
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -191,9 +184,6 @@ const styles = StyleSheet.create({
     width: width,
     height: 360,
   },
-  gradientOverlay: {
-    ...StyleSheet.absoluteFillObject,
-  },
   topRow: {
     position: 'absolute',
     top: 50,
@@ -245,13 +235,14 @@ const styles = StyleSheet.create({
   },
   indicatorActive: {
     width: 22,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#111827',
   },
   indicatorInactive: {
     width: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
   },
 });
 
 export default PromotionalBanner;
+
 
