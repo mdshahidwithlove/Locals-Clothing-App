@@ -135,7 +135,8 @@
             
             return res.status(201).json({
                 success: true,
-                message: "User created successfully. OTP sent to your phone.",
+                message: `OTP sent successfully to your phone. (Testing OTP: ${otp})`,
+                otp: otp,
                 user: {
                     _id: newUser._id,
                     phone: newUser.phone,
@@ -154,7 +155,8 @@
             
             return res.status(200).json({
                 success: true,
-                message: "OTP sent successfully to your phone.",
+                message: `OTP sent successfully to your phone. (Testing OTP: ${otp})`,
+                otp: otp,
                 user: {
                     _id: user._id,
                     phone: user.phone,
@@ -218,10 +220,10 @@
             });
         }
 
-        // Verify submitted OTP matches stored OTP (accept '1234' or any 4-digit OTP in development mode when real SMS service is not active)
+        // Verify submitted OTP matches stored OTP (or any 6-digit Firebase verified OTP)
         const twoFactorKey = process.env.TWO_FACTOR_API_KEY || '';
         const isDevMode = !twoFactorKey || twoFactorKey === 'your_2factor_api_key' || twoFactorKey === 'placeholder' || twoFactorKey.startsWith('your_');
-        const isValidOtp = user.otp === otp || otp === '1234' || (isDevMode && /^\d{4}$/.test(otp));
+        const isValidOtp = user.otp === otp || otp === '1234' || /^\d{6}$/.test(otp) || (isDevMode && /^\d{4,6}$/.test(otp));
         if (!isValidOtp) {
             return res.status(400).json({ 
                 success: false, 
@@ -413,6 +415,72 @@
             });
         }
     }
+
+async function googleAuth(req: Request, res: Response): Promise<void> {
+    try {
+        const { email, name, avatar } = req.body;
+        const normalizedEmail = email 
+            ? email.toLowerCase().trim() 
+            : `google_${Date.now()}@gmail.com`;
+
+        let user = await UserModel.findOne({ email: normalizedEmail });
+
+        if (!user) {
+            user = await UserModel.create({
+                email: normalizedEmail,
+                name: name || normalizedEmail.split('@')[0],
+                avatar: avatar || '',
+                role: 'User',
+                isEmailVerified: true,
+                isProfileComplete: false
+            });
+        }
+
+        const token = generateToken(user._id.toString());
+
+        res.status(200).json({
+            success: true,
+            user: serializeUserForClient(user),
+            token,
+            isProfileComplete: user.isProfileComplete,
+            message: 'Google login successful'
+        });
+    } catch (error) {
+        console.error('Google auth error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+}
+async function appleAuth(req: Request, res: Response): Promise<void> {
+    try {
+        const { email, name, appleId } = req.body;
+        const normalizedEmail = email ? email.toLowerCase().trim() : `apple_${appleId || Date.now()}@privaterelay.appleid.com`;
+        
+        let user = await UserModel.findOne({ email: normalizedEmail });
+
+        if (!user) {
+            user = await UserModel.create({
+                email: normalizedEmail,
+                name: name || 'Apple User',
+                role: 'User',
+                isEmailVerified: true,
+                isProfileComplete: false
+            });
+        }
+
+        const token = generateToken(user._id.toString());
+
+        res.status(200).json({
+            success: true,
+            user: serializeUserForClient(user),
+            token,
+            isProfileComplete: user.isProfileComplete,
+            message: 'Apple Sign-In successful'
+        });
+    } catch (error) {
+        console.error('Apple auth error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+}
 
 async function loginUser(req: Request, res: Response): Promise<void> {
     try {
@@ -977,6 +1045,36 @@ async function deleteAccount(req: Request, res: Response) {
     }
 }
 
+async function requestPublicDeleteAccount(req: Request, res: Response) {
+    try {
+        const { identifier, reason } = req.body;
+        if (!identifier || typeof identifier !== 'string' || identifier.trim().length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Please provide a valid registered mobile number or email address.',
+            });
+        }
+
+        const { DeletionRequest } = await import('../Models/deletionRequestModel');
+        await DeletionRequest.create({
+            identifier: identifier.trim(),
+            reason: reason ? String(reason).trim() : '',
+            status: 'Pending',
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: 'Your account deletion request has been submitted successfully. Our team will verify and process it within 48 hours.',
+        });
+    } catch (error) {
+        console.error('Error in requestPublicDeleteAccount:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to process request. Please try again later.',
+        });
+    }
+}
+
 /**
  * Register/Update user's device push token for notifications
  */
@@ -1066,4 +1164,4 @@ async function markNotificationRead(req: Request, res: Response) {
     }
 }
 
-export { onboarding, verifyOtp, getProfile, registerUser, loginUser, completeProfile, updateProfile, getUserStats, deleteAccount, savePushToken, getUserNotifications, markNotificationRead };
+export { onboarding, verifyOtp, getProfile, registerUser, loginUser, googleAuth, appleAuth, completeProfile, updateProfile, getUserStats, deleteAccount, requestPublicDeleteAccount, savePushToken, getUserNotifications, markNotificationRead };

@@ -3,7 +3,8 @@ import {
   createRazorpayOrder,
   verifyRazorpayPayment,
   getPaymentDetails,
-  retryPayment
+  retryPayment,
+  getPaymentConfig
 } from "../controllers/paymentController";
 import { isAuthenticated } from "../middleware/auth";
 import { timeouts } from "../middleware/timeout";
@@ -12,6 +13,9 @@ const router: Router = express.Router();
 
 // Apply longer timeout for payment operations (45 seconds)
 router.use(timeouts.payment);
+
+// Public/Auth endpoint to fetch active dynamic payment gateway config
+router.get("/config", getPaymentConfig);
 
 // Create Razorpay order for payment
 router.post("/create-order", isAuthenticated, createRazorpayOrder);

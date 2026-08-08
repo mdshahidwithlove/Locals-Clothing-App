@@ -12,53 +12,20 @@ const phoneSchema = z.string()
         return cleaned;
     });
 
-// Email validation with strict domain checking
+// Email validation
 const emailSchema = z.string()
     .min(1, "Email is required")
     .trim()
     .toLowerCase()
     .email("Please provide a valid email address")
-    .max(320, "Email is too long") // RFC 5321 limit
-    .refine((email) => {
-        // Extract domain from email
-        const domain = email.split('@')[1];
-        
-        // List of legitimate email providers only
-        const legitimateDomains = [
-            'gmail.com',
-            'yahoo.com',
-            'hotmail.com',
-            'outlook.com',
-            'live.com',
-            'msn.com',
-            'aol.com',
-            'icloud.com',
-            'me.com',
-            'mac.com',
-            'protonmail.com',
-            'yandex.com',
-            'mail.com',
-            'gmx.com',
-            'zoho.com',
-            'fastmail.com',
-            'tutanota.com'
-        ];
-        
-        // Check if domain is legitimate
-        return domain && legitimateDomains.includes(domain);
-    }, {
-        message: "Please use a legitimate email provider like Gmail, Yahoo, Outlook, etc. Invalid domains are not allowed."
-    });
+    .max(320, "Email is too long");
 
 // Password validation for registration
 const passwordRegisterSchema = z.string()
-    .min(8, "Password must be at least 8 characters long")
-    .max(128, "Password is too long")
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, {
-        message: "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character"
-    });
+    .min(6, "Password must be at least 6 characters long")
+    .max(128, "Password is too long");
 
-// Password validation for login (less strict)
+// Password validation for login
 const passwordLoginSchema = z.string()
     .min(1, "Password is required")
     .max(128, "Password is too long");

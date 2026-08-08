@@ -9,6 +9,8 @@ import { notifyPaymentSuccess, notifyPaymentFailed } from "../utils/notification
 import { releaseInventory } from "../utils/orderUtils";
 import type { Types } from "mongoose";
 
+import { getConfig } from "../services/configService";
+
 // Initialize Razorpay instance
 let razorpayInstance: Razorpay | null = null;
 
@@ -18,6 +20,24 @@ export function initializeRazorpay(keyId: string, keySecret: string) {
     key_secret: keySecret
   });
   console.log("Razorpay initialized successfully");
+}
+
+export async function getPaymentConfig(req: Request, res: Response) {
+  try {
+    const keyId = getConfig("RAZORPAY_KEY_ID") || getConfig("RAZORPAY_KEYID") || process.env.RAZORPAY_KEY_ID || "";
+    const keySecret = getConfig("RAZORPAY_KEY_SECRET") || getConfig("RAZORPAY_API_SECRET") || process.env.RAZORPAY_KEY_SECRET || "";
+    const isEnabled = Boolean(keyId && keySecret);
+
+    return res.status(200).json({
+      success: true,
+      keyId,
+      isEnabled,
+      currency: "INR"
+    });
+  } catch (error) {
+    console.error("Error getting payment config:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
 }
 
 /**
@@ -110,7 +130,7 @@ export async function createRazorpayOrder(req: Request, res: Response) {
         currency: razorpayOrder.currency
       },
       paymentIds,
-      keyId: process.env.RAZORPAY_KEY_ID || process.env.RAZORPAY_KEYID
+      keyId: getConfig("RAZORPAY_KEY_ID") || getConfig("RAZORPAY_KEYID") || process.env.RAZORPAY_KEY_ID || process.env.RAZORPAY_KEYID
     });
 
   } catch (error) {
@@ -156,7 +176,7 @@ export async function verifyRazorpayPayment(req: Request, res: Response) {
     }
 
     // Verify signature
-    const keySecret = process.env.RAZORPAY_KEY_SECRET || process.env.RAZORPAY_API_SECRET || "";
+    const keySecret = getConfig("RAZORPAY_KEY_SECRET") || getConfig("RAZORPAY_API_SECRET") || process.env.RAZORPAY_KEY_SECRET || process.env.RAZORPAY_API_SECRET || "";
     const generatedSignature = crypto
       .createHmac("sha256", keySecret)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
