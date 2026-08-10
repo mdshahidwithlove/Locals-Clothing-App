@@ -1,15 +1,13 @@
 import axios from "axios";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Use environment variable or fallback to production Render backend
 export const baseUrl = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://locals-clothing-app.onrender.com';
 
-// Log the base URL for debugging
 console.log('API Base URL:', baseUrl);
 
 const apiClient = axios.create({
     baseURL: baseUrl,
-    timeout: 10000, // 10 second timeout
+    timeout: 60000, // 60 second timeout for Render cold starts
     headers: {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache',
@@ -18,10 +16,8 @@ const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use(async (config) => {
-    // Log outgoing requests
     console.log(`🚀 ${config.method?.toUpperCase()} ${config.url}`);
     
-    // Add bypass headers for tunnel services (ngrok and localtunnel)
     if (baseUrl?.includes('ngrok')) {
         config.headers['ngrok-skip-browser-warning'] = 'true';
     }
@@ -29,7 +25,6 @@ apiClient.interceptors.request.use(async (config) => {
         config.headers['Bypass-Tunnel-Reminder'] = 'true';
     }
     
-    // Add JWT token to requests if available
     try {
         const token = await AsyncStorage.getItem('authToken');
         if (token) {
@@ -41,5 +36,24 @@ apiClient.interceptors.request.use(async (config) => {
     
     return config;
 });
+
+// Auto-retry once on network/timeout errors (especially for Render cold starts)
+apiClient.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+        const config = error.config;
+        if (!config || config._retry) {
+            return Promise.reject(error);
+        }
+        
+        if (error.code === 'ECONNABORTED' || error.message?.includes('timeout') || !error.response) {
+            config._retry = true;
+            console.log('🔄 Retrying request due to cold start timeout:', config.url);
+            return apiClient(config);
+        }
+        
+        return Promise.reject(error);
+    }
+);
 
 export default apiClient;

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Platform, Animated, Alert, TextInput } from 'react-native';
-import MapView, { PROVIDER_GOOGLE, Region, UrlTile } from 'react-native-maps';
+import WebMapView, { WebMapViewRef, WebMapRegion as Region } from './WebMapView';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { useLocation } from '@/contexts/LocationContext';
@@ -25,7 +25,7 @@ const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
   const [isGeocoding, setIsGeocoding] = useState<boolean>(false);
   const [isBootstrapping, setIsBootstrapping] = useState<boolean>(true);
   
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<WebMapViewRef>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isSearching, setIsSearching] = useState<boolean>(false);
   
@@ -169,15 +169,43 @@ const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
     });
   };
 
+  const [isLocating, setIsLocating] = useState<boolean>(false);
+
+  const handleRecenterToCurrentLocation = async () => {
+    try {
+      setIsLocating(true);
+      const loc = await getCurrentLocation();
+      if (loc) {
+        const nextRegion: Region = {
+          latitude: loc.latitude,
+          longitude: loc.longitude,
+          latitudeDelta: 0.008,
+          longitudeDelta: 0.008,
+        };
+        setCurrentRegion(nextRegion);
+        mapRef.current?.animateToRegion(nextRegion, 1000);
+        setIsGeocoding(true);
+        const addr = await reverseGeocode(loc.latitude, loc.longitude);
+        if (addr?.formattedAddress) {
+          setAddress(addr.formattedAddress);
+        }
+      } else {
+        Alert.alert('Location Error', 'Unable to fetch current GPS location. Please ensure location permissions are enabled.');
+      }
+    } catch (err) {
+      console.error('Error recentering location:', err);
+      Alert.alert('Location Error', 'Failed to get your current location.');
+    } finally {
+      setIsLocating(false);
+      setIsGeocoding(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
-      {/* Integrated Back Button & Search Bar at the top */}
+      {/* Search Header */}
       <View style={styles.searchContainer}>
-        <TouchableOpacity 
-          onPress={onClose}
-          style={styles.backButtonInline}
-          activeOpacity={0.7}
-        >
+        <TouchableOpacity onPress={onClose} style={styles.backButtonInline}>
           <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
         <TextInput
@@ -214,22 +242,26 @@ const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
         <View style={styles.center}>
           <View style={styles.loadingCard}>
             <Text style={styles.loadingText}>Enable location services to pick a place</Text>
+            <TouchableOpacity 
+              style={[styles.confirmButton, { marginTop: 12 }]} 
+              onPress={handleRecenterToCurrentLocation}
+            >
+              <Text style={styles.confirmText}>Enable & Retry Location</Text>
+            </TouchableOpacity>
           </View>
         </View>
       ) : (
         <View style={{ flex: 1 }}>
-          <MapView
+          <WebMapView
             ref={mapRef}
             style={{ flex: 1 }}
-            provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
             initialRegion={mapInitialRegion}
             onRegionChangeComplete={onRegionChangeComplete}
-            zoomControlEnabled={Platform.OS === 'android'}
-            showsUserLocation={true}
-            showsMyLocationButton={false}
-            mapType="standard"
-          >
-          </MapView>
+            showCenterPin={true}
+            centerPinColor={Colors.primary}
+            showUserLocation={true}
+            userLocation={currentLocation ? { latitude: currentLocation.latitude, longitude: currentLocation.longitude } : null}
+          />
           
           {/* Center Pin - Sharp and Precise */}
           <View pointerEvents="none" style={styles.centerPinContainer}>
@@ -244,6 +276,20 @@ const LocationPickerScreen: React.FC<LocationPickerScreenProps> = ({
               ]} 
             />
           </View>
+
+          {/* Current Location GPS FAB Button */}
+          <TouchableOpacity 
+            style={styles.myLocationButton}
+            onPress={handleRecenterToCurrentLocation}
+            disabled={isLocating}
+            activeOpacity={0.8}
+          >
+            {isLocating ? (
+              <ActivityIndicator size="small" color={Colors.primary} />
+            ) : (
+              <Ionicons name="locate" size={24} color={Colors.primary} />
+            )}
+          </TouchableOpacity>
 
           {/* Drag Instruction Card */}
           {!isGeocoding && (
@@ -566,6 +612,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: Colors.textPrimary,
+  },
+  myLocationButton: {
+    position: 'absolute',
+    bottom: 24,
+    left: 16,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 6,
+    zIndex: 15,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
   },
 });
 

@@ -10,7 +10,8 @@ import {
   Platform,
   StatusBar,
   Animated,
-  ScrollView
+  ScrollView,
+  Alert
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors } from '@/constants/colors';
@@ -24,28 +25,28 @@ import { useAuth } from '@/contexts/AuthContext';
 const OtpScreen = () => {
   const router = useRouter();
   const { login } = useAuth();
-  const params = useLocalSearchParams<{ phoneNumber?: string }>();
+  const params = useLocalSearchParams<{ phoneNumber?: string; verificationId?: string }>();
   const phoneNumber = params.phoneNumber || '';
-  const [otp, setOtp] = useState(['', '', '', '']);
+  const verificationId = params.verificationId || '';
+  const isFirebaseMode = Boolean(verificationId);
+  const boxCount = isFirebaseMode ? 6 : 4;
+
+  const [otp, setOtp] = useState<string[]>(Array(boxCount).fill(''));
   const [isVerifying, setIsVerifying] = useState(false);
   const [, setTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(1));
   
   const [activeIndex, setActiveIndex] = useState(0);
-  const [boxAnimations] = useState([
-    new Animated.Value(1),
-    new Animated.Value(1),
-    new Animated.Value(1),
-    new Animated.Value(1),
-  ]);
+  const [boxAnimations] = useState(
+    Array(boxCount).fill(0).map(() => new Animated.Value(1))
+  );
   const inputRefs = useRef<TextInput[]>([]);
-
 
   // Memoized OTP validation
   const isOtpComplete = useMemo(() => {
-    return otp.every(digit => digit !== '') && otp.length === 4;
-  }, [otp]);
+    return otp.every(digit => digit !== '') && otp.length === boxCount;
+  }, [otp, boxCount]);
 
   // Format phone number to show only last 4 digits
   const formatPhoneNumber = useMemo(() => {
@@ -72,8 +73,7 @@ const OtpScreen = () => {
     return () => clearInterval(interval);
   }, []);
 
-
-  // Verify OTP handler (moved up to avoid dependency issues)
+  // Verify OTP handler
   const handleVerifyOtp = useCallback(async () => {
     const otpString = otp.join('');
     if (!isOtpComplete) {
@@ -82,8 +82,21 @@ const OtpScreen = () => {
 
     try {
       setIsVerifying(true);
+
+      // Verify with Firebase Google API if verificationId is present
+      if (verificationId) {
+        const { verifyFirebaseCode } = await import('@/utils/firebaseRestAuth');
+        const fbRes = await verifyFirebaseCode(verificationId, otpString);
+        if (!fbRes.success) {
+          Alert.alert('Invalid OTP', fbRes.message || 'Incorrect OTP code entered');
+          setOtp(['', '', '', '', '', '']);
+          setActiveIndex(0);
+          inputRefs.current[0]?.focus();
+          return;
+        }
+      }
       
-      // Verify OTP with backend
+      // Complete login with backend
       const response = await apiClient.post('/api/v1/user/verify-otp', {
         phone: phoneNumber,
         otp: otpString
@@ -94,22 +107,22 @@ const OtpScreen = () => {
         await login(user, token);
         navigateAfterAuth(user, router);
       } else {
-        // Wrong OTP - clear without shake
-        setOtp(['', '', '', '']);
+        Alert.alert('Invalid OTP', response.data.message || 'Please enter the correct 6-digit OTP code.');
+        setOtp(['', '', '', '', '', '']);
         setActiveIndex(0);
         inputRefs.current[0]?.focus();
       }
     } catch (error: any) {
       console.error('OTP verification error:', error);
-      
-      // Error - clear without shake
-      setOtp(['', '', '', '']);
+      const errMsg = error.response?.data?.message || 'Invalid OTP code. Please try again.';
+      Alert.alert('Error', errMsg);
+      setOtp(['', '', '', '', '', '']);
       setActiveIndex(0);
       inputRefs.current[0]?.focus();
     } finally {
       setIsVerifying(false);
     }
-  }, [isOtpComplete, router, phoneNumber, otp, login]);
+  }, [isOtpComplete, router, phoneNumber, verificationId, otp, login]);
 
   // Enhanced OTP change handler with haptic feedback and animations
   const handleOtpChange = useCallback((value: string, index: number) => {
@@ -137,7 +150,7 @@ const OtpScreen = () => {
     }
 
     // Auto-focus next input
-    if (value && index < 3) {
+    if (value && index < otp.length - 1) {
       setActiveIndex(index + 1);
       inputRefs.current[index + 1]?.focus();
     }
@@ -221,7 +234,7 @@ const OtpScreen = () => {
               </View>
               <Text style={styles.title}>Verify Your Number</Text>
               <Text style={styles.subtitle}>
-                We&apos;ve sent a 4-digit code to{'\n'}
+                We&apos;ve sent a {boxCount}-digit code to{'\n'}
                 <Text style={styles.phoneNumber}>{formatPhoneNumber}</Text>
               </Text>
             </View>

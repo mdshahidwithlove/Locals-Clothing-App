@@ -1,0 +1,42 @@
+{
+  "project_info": {
+    "project_number": "78798009324",
+    "project_id": "locals-app-2026",
+    "storage_bucket": "locals-app-2026.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:78798009324:android:d648b209a8264102",
+        "android_client_info": {
+          "package_name": "com.Locals1.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "78798009324-web.apps.googleusercontent.com",
+          "client_type": 3
+        },
+        {
+          "client_id": "78798009324-android.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.Locals1.app",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBQZGl5wZhCM06tJa6lDLjwc3pFS0QP9J8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

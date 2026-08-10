@@ -10,7 +10,7 @@ import {
   Linking,
   Platform,
 } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE, UrlTile } from 'react-native-maps';
+import WebMapView from '../ui/WebMapView';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '@/constants/colors';
@@ -280,27 +280,19 @@ const ActiveDeliveryScreen: React.FC<ActiveDeliveryScreenProps> = ({ delivery, o
         {/* Map View */}
         {mapRegion && (
           <View style={styles.mapContainer}>
-            <MapView
-              provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+            <WebMapView
               style={styles.map}
               initialRegion={mapRegion}
-              showsUserLocation
-              showsMyLocationButton
-              followsUserLocation
-              mapType="standard"
-            >
-              {/* Current location marker */}
-              {currentLocation && (
-                <Marker
-                  coordinate={{
-                    latitude: currentLocation.lat,
-                    longitude: currentLocation.lng,
-                  }}
-                  title="Your Location"
-                  pinColor={Colors.primary}
-                />
-              )}
-            </MapView>
+              showUserLocation={true}
+              userLocation={currentLocation ? { latitude: currentLocation.lat, longitude: currentLocation.lng } : null}
+              markers={currentLocation ? [{
+                id: 'current',
+                latitude: currentLocation.lat,
+                longitude: currentLocation.lng,
+                title: 'Your Location',
+                type: 'current' as const,
+              }] : []}
+            />
           </View>
         )}
 

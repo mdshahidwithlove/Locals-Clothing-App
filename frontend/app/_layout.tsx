@@ -1,9 +1,6 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
-import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
-import * as SplashScreen from 'expo-splash-screen';
-import { useCallback, useEffect } from 'react';
 import 'react-native-reanimated';
 import { useColorScheme } from 'react-native';
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -13,38 +10,12 @@ import { OnlineStatusProvider } from '@/contexts/OnlineStatusContext';
 import { NotificationProvider } from '@/components/NotificationProvider';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-SplashScreen.preventAutoHideAsync().catch(() => {
-  // Splash may already be hidden on fast reload.
-});
-
-// Load icon fonts at startup — keys must match @expo/vector-icons font family names
-const iconFonts = {
-  ionicons: require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf'),
-  material: require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialIcons.ttf'),
-  anticon: require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/AntDesign.ttf'),
-};
-
 export const unstable_settings = {
   anchor: 'index',
 };
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const [fontsLoaded] = useFonts(iconFonts);
-
-  const onLayoutRootView = useCallback(async () => {
-    if (fontsLoaded) {
-      await SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded]);
-
-  useEffect(() => {
-    onLayoutRootView();
-  }, [onLayoutRootView]);
-
-  if (!fontsLoaded) {
-    return null;
-  }
 
   return (
     <SafeAreaProvider>

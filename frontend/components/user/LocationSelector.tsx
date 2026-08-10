@@ -15,7 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { useLocation } from '@/contexts/LocationContext';
-import { Region } from 'react-native-maps';
+import { WebMapRegion as Region } from '@/components/ui/WebMapView';
 import apiClient from '@/api/client';
 import { useAuth } from '@/contexts/AuthContext';
 import LocationPickerScreen from '@/components/ui/LocationPickerScreen';
@@ -152,16 +152,18 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({
         onPress={() => setIsModalVisible(true)}
         activeOpacity={0.7}
       >
-        <View style={styles.locationIcon}>
-          <Ionicons name="location-outline" size={20} color={Colors.textSecondary} />
+        <View style={styles.pinCircle}>
+          <Ionicons name="location-sharp" size={18} color="#FFFFFF" />
         </View>
         <View style={styles.locationInfo}>
-          <Text style={styles.locationLabel}>Deliver to</Text>
-          <Text style={styles.locationName}>
+          <View style={styles.deliverToRow}>
+            <Text style={styles.locationLabel}>DELIVER TO</Text>
+            <Ionicons name="chevron-down" size={13} color="#000000" style={{ marginLeft: 3 }} />
+          </View>
+          <Text style={styles.locationName} numberOfLines={1}>
             {selectedLocation ? selectedLocation.name : 'Select Location'}
           </Text>
         </View>
-        <Ionicons name="chevron-down" size={20} color={Colors.textSecondary} />
       </TouchableOpacity>
 
       <Modal
@@ -465,23 +467,47 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'transparent',
+    alignSelf: 'flex-start',
+    paddingVertical: 2,
   },
-  locationIcon: {
-    marginRight: 12,
+  pinCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+    elevation: 4,
   },
   locationInfo: {
-    flex: 1,
+    justifyContent: 'center',
+  },
+  deliverToRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   locationLabel: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    fontWeight: '500',
+    fontSize: 10,
+    color: '#000000',
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    textShadowColor: 'rgba(255, 255, 255, 0.7)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   locationName: {
     fontSize: 16,
-    color: Colors.textPrimary,
-    fontWeight: '600',
-    marginTop: 2,
+    color: '#FFFFFF',
+    fontWeight: '800',
+    marginTop: 1,
+    textShadowColor: 'rgba(0, 0, 0, 0.9)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   fullscreenModal: {
     flex: 1,

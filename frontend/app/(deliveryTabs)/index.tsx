@@ -631,7 +631,7 @@ export default function DeliveryHome() {
             </View>
 
             {/* Statement Delivery History */}
-            <Text style={{ fontSize: 15, fontWeight: '700', color: Colors.text, marginBottom: 10 }}>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: Colors.textPrimary, marginBottom: 10 }}>
               Recent Delivery Statement
             </Text>
             {recentDeliveries.length === 0 ? (
@@ -653,7 +653,7 @@ export default function DeliveryHome() {
                   }}
                 >
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.text }}>
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.textPrimary }}>
                       Order #{item.order?.orderNumber || item._id.substring(0, 8)}
                     </Text>
                     <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 2 }}>

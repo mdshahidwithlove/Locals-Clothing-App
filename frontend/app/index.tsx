@@ -1,99 +1,60 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet, Image, Dimensions } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import { getPostAuthRoute } from '@/utils/authRouting';
+import apiClient from '@/api/client';
+
+const splashImage = require('../assets/images/user-splash-full.png');
 
 export default function IndexScreen() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const router = useRouter();
-  const [minDelayDone, setMinDelayDone] = useState(false);
+  const [splashFinished, setSplashFinished] = useState(false);
 
-  // Keep splash screen visible for a minimum of 2.5 seconds to show branding
+  // Pre-warm backend server during splash display
+  useEffect(() => {
+    apiClient.get('/').catch(() => {
+      console.log('Backend pre-warm ping initiated');
+    });
+  }, []);
+
+  // Display user's exact splash screen for 2.5 seconds
   useEffect(() => {
     const timer = setTimeout(() => {
-      setMinDelayDone(true);
+      setSplashFinished(true);
     }, 2500);
     return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
-    if (!isLoading && minDelayDone) {
-      if (isAuthenticated) {
-        console.log('🔍 Navigation Debug:', {
-          isAuthenticated,
-          user: user ? {
-            _id: user._id,
-            name: user.name,
-            role: user.role,
-            isProfileComplete: user.isProfileComplete
-          } : null
-        });
-        
-        // Check if user needs to complete profile
-        if (user) {
-          router.replace(getPostAuthRoute(user) as any);
-        }
+    if (!isLoading && splashFinished) {
+      if (isAuthenticated && user) {
+        router.replace(getPostAuthRoute(user) as any);
       } else {
-        console.log('🔐 User not authenticated, navigating to Auth');
         router.replace('/auth/Auth');
       }
     }
-  }, [isAuthenticated, isLoading, minDelayDone, user, router]);
+  }, [isAuthenticated, isLoading, splashFinished, user, router]);
 
-  if (isLoading || !minDelayDone) {
-    return (
-      <View style={styles.loadingContainer}>
-        <View style={styles.logoContainer}>
-          <Text style={styles.logoText}>Locals</Text>
-        </View>
-        
-        <View style={styles.footerContainer}>
-          <Text style={styles.footerCopyright}>© 2024 Locals Inc.</Text>
-          <Text style={styles.footerLoading}>Loading...</Text>
-        </View>
-      </View>
-    );
-  }
-
-  return null;
+  return (
+    <View style={styles.container}>
+      <Image
+        source={splashImage}
+        style={styles.splashImage}
+        resizeMode="cover"
+      />
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-  loadingContainer: {
+  container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFD21F',
+    backgroundColor: '#FFC529',
   },
-  logoContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  logoText: {
-    fontSize: 96,
-    fontWeight: '900',
-    fontFamily: Platform.OS === 'ios' ? 'Georgia-Bold' : 'serif',
-    color: '#000000',
-    letterSpacing: 2,
-  },
-  footerContainer: {
-    position: 'absolute',
-    bottom: 48,
-    alignItems: 'center',
-  },
-  footerCopyright: {
-    fontSize: 11,
-    color: '#000000',
-    opacity: 0.9,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  footerLoading: {
-    fontSize: 11,
-    color: '#000000',
-    opacity: 0.7,
-    fontWeight: '600',
+  splashImage: {
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height,
   },
 });
-

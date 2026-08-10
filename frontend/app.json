@@ -2,7 +2,7 @@
   "expo": {
     "name": "Locals",
     "slug": "Locals",
-    "version": "1.0.2",
+    "version": "5.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/app-icon.png",
     "scheme": "locals",
@@ -13,8 +13,11 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.Locals1.app",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "We use your location to show nearby stores and deliver to the right address.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "We use your location to show nearby stores and deliver to the right address."
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationWhenInUseUsageDescription": "Locals uses your location to show nearby stores and deliver orders to your address.",
+        "NSCameraUsageDescription": "Locals uses your camera to allow taking product and profile photos.",
+        "NSPhotoLibraryUsageDescription": "Locals accesses your photo library to select product and profile photos.",
+        "NSMicrophoneUsageDescription": "Locals uses your microphone for optional voice search features."
       },
       "runtimeVersion": {
         "policy": "appVersion"
@@ -22,14 +25,15 @@
     },
     "android": {
       "softwareKeyboardLayoutMode": "resize",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon-foreground.png",
-        "backgroundColor": "#FFD700"
+        "backgroundColor": "#FFD21F"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.Locals1.app",
-      "versionCode": 5,
+      "versionCode": 52,
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyBQZGl5wZhCM06tJa6lDLjwc3pFS0QP9J8"
@@ -38,16 +42,8 @@
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_BACKGROUND_LOCATION",
-        "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_LOCATION",
         "android.permission.RECORD_AUDIO",
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_BACKGROUND_LOCATION",
-        "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_LOCATION",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.CAMERA"
       ],
       "runtimeVersion": "1.0.0"
     },
@@ -57,6 +53,23 @@
     },
     "plugins": [
       "expo-router",
+      "expo-font",
+      "expo-video",
+      "@react-native-google-signin/google-signin",
+      "expo-apple-authentication",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow Locals to access your location while using the app to show nearby stores.",
+          "isAndroidForegroundServiceEnabled": false
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#FFD21F"
+        }
+      ],
       [
         "expo-image-picker",
         {
@@ -67,7 +80,7 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 240,
+          "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#FFD21F",
           "dark": {
@@ -87,7 +100,9 @@
     },
     "owner": "mdshahidwithlov",
     "updates": {
-      "url": "https://u.expo.dev/5458c1bc-f1c7-4685-aec3-051a003ede34"
+      "url": "https://u.expo.dev/5458c1bc-f1c7-4685-aec3-051a003ede34",
+      "checkAutomatically": "NEVER",
+      "enabled": false
     }
   }
 }

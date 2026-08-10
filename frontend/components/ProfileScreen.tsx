@@ -10,7 +10,7 @@ import apiClient from '../api/client';
 import { pickSingleImageFromLibrary } from '@/utils/imagePickerUtils';
 import { normalizeUploadAsset, uriToUploadBlob } from '@/utils/imageUploadUtils';
 import type { ImagePickerAsset } from 'expo-image-picker';
-import { Region } from 'react-native-maps';
+import { WebMapRegion as Region } from '@/components/ui/WebMapView';
 import LocationPickerScreen from '@/components/ui/LocationPickerScreen';
 import ManualAddressScreen from '@/components/ui/ManualAddressScreen';
 import { AddressFormData, EMPTY_ADDRESS_FORM } from '@/utils/addressUtils';
@@ -662,8 +662,8 @@ const notAuthenticatedView = (
               <View style={[styles.statIconContainer, { backgroundColor: '#E3F2FD' }]}>
                 <Ionicons name="checkmark-circle" size={24} color="#2196F3" />
               </View>
-              <Text style={styles.statLabel}>Profile</Text>
-              <Text style={[styles.statValue, user.isProfileComplete ? { color: Colors.success } : { color: Colors.warning }]}>
+              <Text style={styles.statLabel} numberOfLines={1}>Profile</Text>
+              <Text style={[styles.statValue, user.isProfileComplete ? { color: Colors.success } : { color: Colors.warning }]} numberOfLines={1} adjustsFontSizeToFit>
                 {user.isProfileComplete ? 'Complete' : 'Incomplete'}
               </Text>
             </View>
@@ -673,8 +673,8 @@ const notAuthenticatedView = (
                 <View style={[styles.statIconContainer, { backgroundColor: '#F3E5F5' }]}>
                   <Ionicons name="location" size={24} color="#9C27B0" />
                 </View>
-                <Text style={styles.statLabel}>{user.role === 'Merchant' ? 'Store' : 'Addresses'}</Text>
-                <Text style={styles.statValue}>{user.role === 'Merchant' ? (storeDetails ? '1' : '0') : addresses.length}</Text>
+                <Text style={styles.statLabel} numberOfLines={1}>{user.role === 'Merchant' ? 'Store' : 'Addresses'}</Text>
+                <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>{user.role === 'Merchant' ? (storeDetails ? '1' : '0') : addresses.length}</Text>
               </View>
             )}
 
@@ -682,8 +682,8 @@ const notAuthenticatedView = (
               <View style={[styles.statIconContainer, { backgroundColor: '#E8F5E9' }]}>
                 <Ionicons name="shield-checkmark" size={24} color="#4CAF50" />
               </View>
-              <Text style={styles.statLabel}>Verified</Text>
-              <Text style={styles.statValue}>
+              <Text style={styles.statLabel} numberOfLines={1}>Verified</Text>
+              <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>
                 {(user.isEmailVerified ? 1 : 0) + (user.isPhoneVerified ? 1 : 0)}/2
               </Text>
             </View>
@@ -693,8 +693,8 @@ const notAuthenticatedView = (
                 <View style={[styles.statIconContainer, { backgroundColor: '#FFF3E0' }]}>
                   <Ionicons name="bicycle" size={24} color="#FF9800" />
                 </View>
-                <Text style={styles.statLabel}>Status</Text>
-                <Text style={styles.statValue}>{user.isBusy ? 'Busy' : 'Available'}</Text>
+                <Text style={styles.statLabel} numberOfLines={1}>Status</Text>
+                <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>{user.isBusy ? 'Busy' : 'Available'}</Text>
               </View>
             )}
           </View>
@@ -1479,37 +1479,42 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 24,
-    gap: 12,
+    gap: 8,
   },
   statCard: {
     flex: 1,
     backgroundColor: Colors.background,
     borderRadius: 16,
-    padding: 16,
+    paddingHorizontal: 8,
+    paddingVertical: 12,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
+    overflow: 'hidden',
   },
   statIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11,
+    fontWeight: '600',
     color: Colors.textSecondary,
-    marginBottom: 4,
+    marginBottom: 2,
+    textAlign: 'center',
   },
   statValue: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
     color: Colors.textPrimary,
+    textAlign: 'center',
   },
   section: {
     marginBottom: 24,
@@ -1519,11 +1524,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
+    flexWrap: 'wrap',
+    gap: 8,
   },
   sectionHeaderRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   addAddressButton: {
     borderRadius: 12,
@@ -1537,34 +1546,36 @@ const styles = StyleSheet.create({
   addAddressButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 4,
   },
   addAddressButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
     color: Colors.textPrimary,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: Colors.textPrimary,
+    flexShrink: 1,
   },
   sectionSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: Colors.textSecondary,
   },
   card: {
     backgroundColor: Colors.background,
     borderRadius: 20,
-    padding: 20,
+    padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 12,
     elevation: 3,
+    overflow: 'hidden',
   },
   infoItem: {
     flexDirection: 'row',
@@ -1589,14 +1600,16 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   infoValue: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '500',
     color: Colors.textPrimary,
+    flexShrink: 1,
   },
   verifiedRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flexWrap: 'wrap',
   },
   verifiedBadge: {
     flexDirection: 'row',

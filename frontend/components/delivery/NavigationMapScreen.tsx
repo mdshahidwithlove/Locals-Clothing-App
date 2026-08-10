@@ -12,7 +12,7 @@ import {
   Modal,
   ScrollView,
 } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE, UrlTile } from 'react-native-maps';
+import WebMapView, { WebMapViewRef, WebMapMarker } from '../ui/WebMapView';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -33,7 +33,7 @@ interface LocationCoords {
 const NavigationMapScreen: React.FC = () => {
   const params = useLocalSearchParams();
   const router = useRouter();
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<WebMapViewRef>(null);
   const hasCalculatedRoute = useRef(false);
 
   // Parse locations from params - useMemo to keep stable references
@@ -571,82 +571,46 @@ const NavigationMapScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* Map */}
-      <MapView
+      <WebMapView
         ref={mapRef}
-        provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
         style={styles.map}
         initialRegion={{
-          ...currentLocation,
+          latitude: currentLocation?.latitude || 30.21,
+          longitude: currentLocation?.longitude || 74.95,
           latitudeDelta: LATITUDE_DELTA,
           longitudeDelta: LONGITUDE_DELTA,
         }}
-        showsUserLocation={false}
-        showsMyLocationButton={false}
-        showsCompass={true}
-        showsTraffic={false}
-        showsBuildings={false}
-        showsIndoors={false}
-        followsUserLocation={followUser}
-        onPanDrag={() => setFollowUser(false)}
-        onRegionChangeComplete={(region) => {
-          setCurrentRegion({
-            latitudeDelta: region.latitudeDelta,
-            longitudeDelta: region.longitudeDelta,
-          });
-        }}
-        mapType="standard"
-      >
-        {/* Current Location Marker */}
-        {currentLocation && (
-          <Marker
-            coordinate={currentLocation}
-            anchor={{ x: 0.5, y: 0.5 }}
-          >
-            <NavigationMarker type="current" size={20} />
-          </Marker>
-        )}
-
-        {/* Pickup Location Marker */}
-        {pickupLocation && navigationType === 'pickup' && (pickupLocation.lat || geocodedPickup) && (
-          <Marker
-            coordinate={{ 
-              latitude: pickupLocation.lat || geocodedPickup?.lat || 0, 
-              longitude: pickupLocation.lng || geocodedPickup?.lng || 0 
-            }}
-            title="Pickup Location"
-            description={pickupLocation.address}
-            anchor={{ x: 0.5, y: 0.5 }}
-          >
-            <NavigationMarker type="pickup" size={20} />
-          </Marker>
-        )}
-
-        {/* Delivery Location Marker */}
-        {deliveryLocation && navigationType === 'delivery' && (deliveryLocation.lat || geocodedDelivery) && (
-          <Marker
-            coordinate={{ 
-              latitude: deliveryLocation.lat || geocodedDelivery?.lat || 0, 
-              longitude: deliveryLocation.lng || geocodedDelivery?.lng || 0 
-            }}
-            title="Delivery Location"
-            description={deliveryLocation.address}
-            anchor={{ x: 0.5, y: 0.5 }}
-          >
-            <NavigationMarker type="delivery" size={20} />
-          </Marker>
-        )}
-
-        {/* Route Polyline */}
-        {routeCoordinates.length > 1 && (
-          <Polyline
-            coordinates={routeCoordinates}
-            strokeColor="#FFD700"
-            strokeWidth={5}
-            lineJoin="round"
-            lineCap="round"
-          />
-        )}
-      </MapView>
+        showUserLocation={true}
+        userLocation={currentLocation ? { latitude: currentLocation.latitude, longitude: currentLocation.longitude } : null}
+        markers={[
+          ...(currentLocation ? [{
+            id: 'current',
+            latitude: currentLocation.latitude,
+            longitude: currentLocation.longitude,
+            title: 'Your Location',
+            type: 'current' as const,
+          }] : []),
+          ...(pickupLocation && navigationType === 'pickup' && (pickupLocation.lat || geocodedPickup) ? [{
+            id: 'pickup',
+            latitude: pickupLocation.lat || geocodedPickup?.lat || 0,
+            longitude: pickupLocation.lng || geocodedPickup?.lng || 0,
+            title: 'Pickup Location',
+            type: 'pickup' as const,
+          }] : []),
+          ...(deliveryLocation && navigationType === 'delivery' && (deliveryLocation.lat || geocodedDelivery) ? [{
+            id: 'delivery',
+            latitude: deliveryLocation.lat || geocodedDelivery?.lat || 0,
+            longitude: deliveryLocation.lng || geocodedDelivery?.lng || 0,
+            title: 'Delivery Location',
+            type: 'delivery' as const,
+          }] : []),
+        ]}
+        polyline={routeCoordinates.length > 1 ? {
+          coordinates: routeCoordinates,
+          color: '#FFD700',
+          weight: 5,
+        } : undefined}
+      />
 
       {/* Top Header */}
       <LinearGradient

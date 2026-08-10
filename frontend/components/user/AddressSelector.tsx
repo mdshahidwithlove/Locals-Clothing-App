@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
 import apiClient from '@/api/client';
-import { Region } from 'react-native-maps';
+import { WebMapRegion as Region } from '@/components/ui/WebMapView';
 import { useLocation } from '@/contexts/LocationContext';
 import LocationPickerScreen from '@/components/ui/LocationPickerScreen';
 import ManualAddressScreen from '@/components/ui/ManualAddressScreen';

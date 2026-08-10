@@ -92,17 +92,10 @@ android {
         applicationId 'com.Locals1.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 5
-        versionName "1.0.2"
+        versionCode 52
+        versionName "5.0.2"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
-
-        externalNativeBuild {
-            cmake {
-                arguments "-DCMAKE_BUILD_TYPE=Release", "-DCMAKE_CXX_FLAGS=-g0", "-DCMAKE_C_FLAGS=-g0"
-                cppFlags "-g0"
-            }
-        }
     }
     signingConfigs {
         debug {
@@ -125,11 +118,7 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
-            if (project.hasProperty('MYAPP_UPLOAD_STORE_FILE')) {
-                signingConfig signingConfigs.release
-            } else {
-                signingConfig signingConfigs.debug
-            }
+            signingConfig project.hasProperty('MYAPP_UPLOAD_STORE_FILE') ? signingConfigs.release : signingConfigs.debug
             def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
             shrinkResources enableShrinkResources.toBoolean()
             minifyEnabled enableMinifyInReleaseBuilds
@@ -146,10 +135,6 @@ android {
     }
     androidResources {
         ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
-    }
-    lint {
-        checkReleaseBuilds false
-        abortOnError false
     }
 }
 

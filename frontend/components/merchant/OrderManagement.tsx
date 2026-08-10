@@ -176,6 +176,60 @@ const OrderManagement: React.FC = () => {
     }
   };
 
+  const toggleOrderExpansion = (orderId: string) => {
+    setExpandedOrders(prev => {
+      const next = new Set(prev);
+      if (next.has(orderId)) next.delete(orderId);
+      else next.add(orderId);
+      return next;
+    });
+  };
+
+  const handleAcceptOrder = async (orderId: string) => {
+    try {
+      setProcessingOrderId(orderId);
+      const res = await apiClient.patch(`/api/v1/merchant-order/${orderId}/status`, { status: 'Accepted' });
+      if (res.data?.success) {
+        Alert.alert('Success', 'Order accepted successfully!');
+        loadOrders();
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.message || 'Failed to accept order');
+    } finally {
+      setProcessingOrderId(null);
+    }
+  };
+
+  const handleRejectOrder = async (orderId: string) => {
+    try {
+      setProcessingOrderId(orderId);
+      const res = await apiClient.patch(`/api/v1/merchant-order/${orderId}/status`, { status: 'Cancelled' });
+      if (res.data?.success) {
+        Alert.alert('Success', 'Order rejected');
+        loadOrders();
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.message || 'Failed to reject order');
+    } finally {
+      setProcessingOrderId(null);
+    }
+  };
+
+  const handleMarkReady = async (orderId: string) => {
+    try {
+      setProcessingOrderId(orderId);
+      const res = await apiClient.patch(`/api/v1/merchant-order/${orderId}/status`, { status: 'ReadyForPickup' });
+      if (res.data?.success) {
+        Alert.alert('Success', 'Order marked ready for pickup!');
+        loadOrders();
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.message || 'Failed to mark order ready');
+    } finally {
+      setProcessingOrderId(null);
+    }
+  };
+
   const statusFilters = [
     { key: null, label: 'All', icon: 'apps-outline' },
     { key: 'Returns', label: 'Returns', icon: 'refresh-circle-outline' },
@@ -356,20 +410,20 @@ const OrderManagement: React.FC = () => {
                   <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
                     {ret.status === 'Pending' && (
                       <>
-                        <TouchableOpacity style={[styles.acceptBtn, { flex: 1, backgroundColor: Colors.success }]} onPress={() => handleApproveReturn(ret._id)}>
+                        <TouchableOpacity style={[styles.acceptButton, { flex: 1, backgroundColor: Colors.success }]} onPress={() => handleApproveReturn(ret._id)}>
                           <Ionicons name="checkmark-circle" size={16} color="#FFF" />
-                          <Text style={styles.btnText}>Approve Return</Text>
+                          <Text style={styles.actionButtonText}>Approve Return</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={[styles.rejectBtn, { flex: 1, backgroundColor: Colors.error }]} onPress={() => handleRejectReturn(ret._id)}>
+                        <TouchableOpacity style={[styles.rejectButton, { flex: 1, backgroundColor: Colors.error }]} onPress={() => handleRejectReturn(ret._id)}>
                           <Ionicons name="close-circle" size={16} color="#FFF" />
-                          <Text style={styles.btnText}>Reject</Text>
+                          <Text style={styles.actionButtonText}>Reject</Text>
                         </TouchableOpacity>
                       </>
                     )}
                     {ret.status === 'Approved' && ret.refundStatus !== 'Completed' && (
-                      <TouchableOpacity style={[styles.acceptBtn, { flex: 1, backgroundColor: Colors.primary }]} onPress={() => handleCompleteRefund(ret._id)}>
+                      <TouchableOpacity style={[styles.acceptButton, { flex: 1, backgroundColor: Colors.primary }]} onPress={() => handleCompleteRefund(ret._id)}>
                         <Ionicons name="cash" size={16} color="#FFF" />
-                        <Text style={styles.btnText}>Mark Refund Completed</Text>
+                        <Text style={styles.actionButtonText}>Mark Refund Completed</Text>
                       </TouchableOpacity>
                     )}
                   </View>

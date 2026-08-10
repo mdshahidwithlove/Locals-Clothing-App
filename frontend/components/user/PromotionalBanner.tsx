@@ -7,6 +7,7 @@ import {
   Dimensions,
   ScrollView,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import LocationSelector from './LocationSelector';
 import SearchBar from './SearchBar';
 
@@ -41,19 +42,19 @@ interface PromotionalBannerProps {
 const defaultBannerSlides: BannerSlide[] = [
   {
     id: 1,
-    imageSource: require('@/assets/images/banners/banner1.jpg'),
+    imageSource: require('@/assets/images/banners/banner1.png'),
     title: 'SAVE YOUR PRECIOUS TIME',
     subtitle: 'Shop Nearby. Save Time. Live Better.',
   },
   {
     id: 2,
-    imageSource: require('@/assets/images/banners/banner2.jpg'),
+    imageSource: require('@/assets/images/banners/banner2.png'),
     title: 'SAME DAY DELIVERY',
     subtitle: "Today's Order, Today's Delivery!",
   },
   {
     id: 3,
-    imageSource: require('@/assets/images/banners/banner3.jpg'),
+    imageSource: require('@/assets/images/banners/banner3.png'),
     title: 'SHOP BY NEARBY STORES',
     subtitle: 'Your Style. Nearby. Instantly.',
   },
@@ -127,6 +128,13 @@ const PromotionalBanner: React.FC<PromotionalBannerProps> = ({
         ))}
       </ScrollView>
 
+      {/* Top Gradient for contrast behind overlays */}
+      <LinearGradient
+        colors={['rgba(0, 0, 0, 0.45)', 'rgba(0, 0, 0, 0.15)', 'transparent']}
+        style={styles.topGradientOverlay}
+        pointerEvents="none"
+      />
+
       {/* Carousel indicators */}
       <View style={styles.indicators}>
         {bannerSlidesList.map((_, index) => (
@@ -140,7 +148,7 @@ const PromotionalBanner: React.FC<PromotionalBannerProps> = ({
         ))}
       </View>
 
-      {/* Transparent Location Selector Overlay (Positioned top: 50) */}
+      {/* Location Selector Overlay (Positioned top: 48) */}
       <View style={styles.topRow} pointerEvents="box-none">
         <View style={styles.locationContainer} pointerEvents="auto">
           <LocationSelector
@@ -150,7 +158,7 @@ const PromotionalBanner: React.FC<PromotionalBannerProps> = ({
         </View>
       </View>
 
-      {/* Transparent Search Bar Overlay (Positioned top: 105) */}
+      {/* Search Bar Overlay (Positioned top: 108) */}
       <View style={styles.searchContainer} pointerEvents="box-none">
         <View style={styles.searchBarWrapper} pointerEvents="auto">
           <SearchBar onSearch={onSearch} showNavigation={true} />
@@ -162,27 +170,31 @@ const PromotionalBanner: React.FC<PromotionalBannerProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    height: 360,
+    height: width,
     width: width,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 6,
     position: 'relative',
+    backgroundColor: '#000000',
   },
   scrollView: {
     flex: 1,
   },
   slideContainer: {
     width: width,
-    height: 360,
+    height: width,
     position: 'relative',
   },
   fullBannerImage: {
     width: width,
-    height: 360,
+    height: width,
+  },
+  topGradientOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 180,
+    zIndex: 10,
   },
   topRow: {
     position: 'absolute',
@@ -220,7 +232,7 @@ const styles = StyleSheet.create({
   },
   indicators: {
     position: 'absolute',
-    bottom: 16,
+    bottom: 14,
     left: 0,
     right: 0,
     flexDirection: 'row',
@@ -235,11 +247,11 @@ const styles = StyleSheet.create({
   },
   indicatorActive: {
     width: 22,
-    backgroundColor: '#111827',
+    backgroundColor: '#FFFFFF',
   },
   indicatorInactive: {
     width: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    backgroundColor: 'rgba(255, 255, 255, 0.45)',
   },
 });
 
